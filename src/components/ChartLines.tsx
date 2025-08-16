@@ -15,9 +15,10 @@ type Props = {
   onToggleYT?: (show: boolean) => void;
   onToggleSmoothing?: (smooth: boolean) => void;
   onClickDate?: (date: string) => void;
+  normalize?: boolean; // scale each series independently
 };
 
-export default function ChartLines({ points = [], igSeries, ytSeries, height = 140, speedFactor = 1, dates = [], smoothing = false, showIG = true, showYT = true, onToggleIG, onToggleYT, onToggleSmoothing, onClickDate }: Props) {
+export default function ChartLines({ points = [], igSeries, ytSeries, height = 140, speedFactor = 1, dates = [], smoothing = false, showIG = true, showYT = true, onToggleIG, onToggleYT, onToggleSmoothing, onClickDate, normalize = true }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dpr, setDpr] = useState(1);
@@ -27,11 +28,9 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
   const seriesA = useMemo(() => (mode === 'dual' ? (igSeries || []) : points), [mode, igSeries, points]);
   const seriesB = useMemo(() => (mode === 'dual' ? (ytSeries || []) : []), [mode, ytSeries]);
 
-  const maxVal = useMemo(() => {
-    const all = [ ...(showIG ? seriesA : []), ...(showYT ? seriesB : []) ];
-    const m = Math.max(1, ...(all.length ? all : [1]));
-    return m;
-  }, [seriesA, seriesB, showIG, showYT]);
+  const maxAVal = useMemo(() => Math.max(1, ...((seriesA.length ? seriesA : [1]))), [seriesA]);
+  const maxBVal = useMemo(() => Math.max(1, ...((seriesB.length ? seriesB : [1]))), [seriesB]);
+  const maxCombined = useMemo(() => Math.max(1, ...[...seriesA, ...seriesB, 1]), [seriesA, seriesB]);
 
   const smooth = (data: number[], windowSize = 7): number[] => {
     if (!smoothing || windowSize <= 1) return data;
@@ -90,7 +89,7 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
       }
       ctx.restore();
 
-      const drawSeries = (data: number[], colorMain: string, glowBase: string) => {
+      const drawSeries = (data: number[], colorMain: string, glowBase: string, maxForSeries: number) => {
         if (!data.length) return;
         // Path
         ctx.save();
@@ -108,7 +107,7 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
           const v0 = data[i0] || 0;
           const v1 = data[i0 + 1] ?? v0;
           const v = v0 + (v1 - v0) * frac;
-          const y = heightPx - (v / maxVal) * (heightPx * 0.9) - heightPx * 0.05;
+          const y = heightPx - (v / Math.max(1, maxForSeries)) * (heightPx * 0.9) - heightPx * 0.05;
           if (i === 0) ctx.moveTo(i, y); else ctx.lineTo(i, y);
         }
         ctx.stroke();
@@ -121,11 +120,13 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
       };
 
       // Draw IG (pink) and YT (red)
-      if (showIG) drawSeries(sA, 'rgba(255,105,180,0.9)', 'rgba(255,105,180,0.15)');
-      if (showYT) drawSeries(sB, 'rgba(255,60,60,0.85)', 'rgba(255,60,60,0.12)');
+      const maxForA = normalize ? maxAVal : maxCombined;
+      const maxForB = normalize ? maxBVal : maxCombined;
+      if (showIG) drawSeries(sA, 'rgba(255,105,180,0.9)', 'rgba(255,105,180,0.15)', maxForA);
+      if (showYT) drawSeries(sB, 'rgba(255,60,60,0.85)', 'rgba(255,60,60,0.12)', maxForB);
 
       // Sparkle dots
-      const sparkle = (data: number[], color: string) => {
+      const sparkle = (data: number[], color: string, maxForSeries: number) => {
         if (!data.length) return;
         const n = data.length;
         for (let s = 0; s < 8; s++) {
@@ -134,15 +135,15 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
           const i0 = Math.floor(u);
           const v0 = data[i0] || 0; const v1 = data[i0 + 1] ?? v0; const frac = u - i0; const v = v0 + (v1 - v0) * frac;
           const x = Math.floor(p * width);
-          const y = heightPx - (v / maxVal) * (heightPx * 0.9) - heightPx * 0.05;
+          const y = heightPx - (v / Math.max(1, maxForSeries)) * (heightPx * 0.9) - heightPx * 0.05;
           ctx.beginPath();
           ctx.fillStyle = color;
           ctx.arc(x, y, Math.max(1.5, dpr * 1.5), 0, Math.PI * 2);
           ctx.fill();
         }
       };
-      if (showIG) sparkle(sA, 'rgba(255,105,180,0.9)');
-      if (showYT) sparkle(sB, 'rgba(255,60,60,0.9)');
+      if (showIG) sparkle(sA, 'rgba(255,105,180,0.9)', maxForA);
+      if (showYT) sparkle(sB, 'rgba(255,60,60,0.9)', maxForB);
 
       // Day ticks (every 7th index based on provided dates)
       if (dates.length > 0) {
@@ -171,18 +172,18 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
         ctx.lineWidth = Math.max(1, dpr);
         ctx.beginPath(); ctx.moveTo(xPx, 0); ctx.lineTo(xPx, heightPx); ctx.stroke();
 
-        const drawPointInfo = (data: number[], color: string) => {
+        const drawPointInfo = (data: number[], color: string, maxForSeries: number) => {
           if (!data.length) return { y: 0, val: 0 };
           const n = data.length;
           const u = hoverX * (n - 1);
           const i0 = Math.floor(u);
           const v0 = data[i0] || 0; const v1 = data[i0 + 1] ?? v0; const frac = u - i0; const v = v0 + (v1 - v0) * frac;
-          const y = heightPx - (v / maxVal) * (heightPx * 0.9) - heightPx * 0.05;
+          const y = heightPx - (v / Math.max(1, maxForSeries)) * (heightPx * 0.9) - heightPx * 0.05;
           ctx.beginPath(); ctx.fillStyle = color; ctx.arc(xPx, y, Math.max(2, dpr * 2), 0, Math.PI * 2); ctx.fill();
           return { y, val: v };
         };
-        const a = showIG ? drawPointInfo(sA, 'hotpink') : { y: 0, val: 0 };
-        const b = showYT ? drawPointInfo(sB, '#ff3c3c') : { y: 0, val: 0 };
+        const a = showIG ? drawPointInfo(sA, 'hotpink', maxForA) : { y: 0, val: 0 };
+        const b = showYT ? drawPointInfo(sB, '#ff3c3c', maxForB) : { y: 0, val: 0 };
         const dateIdx = dates.length ? Math.round(hoverX * (dates.length - 1)) : -1;
         const dateStr = dateIdx >= 0 ? dates[dateIdx] : '';
         const lines = [dateStr && `📅 ${dateStr}`, showIG && `IG: ${Math.round(a.val)}`, showYT && `YT: ${Math.round(b.val)}`].filter(Boolean) as string[];
@@ -203,7 +204,8 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
       t += 0.006 * speed;
     };
     raf = requestAnimationFrame(render);
-  }, [seriesA, seriesB, maxVal, dpr, speedFactor, dates, hoverX, sA, sB, showIG, showYT]);
+    return () => cancelAnimationFrame(raf);
+  }, [seriesA, seriesB, maxAVal, maxBVal, maxCombined, dpr, speedFactor, dates, hoverX, sA, sB, showIG, showYT, normalize]);
 
   const onClick = () => {
     if (onClickDate && hoverX != null && dates.length) {

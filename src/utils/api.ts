@@ -45,6 +45,8 @@ export const API_ENDPOINTS = {
 
   activityFeed: (platform?: string, limit = 20) =>
     withBase(`/api/activity/feed${platform ? `?platform=${platform}&limit=${limit}` : `?limit=${limit}`}`),
+  activityRecentPosts: (platform?: string, limit = 5) =>
+    withBase(`/api/activity/recent-posts${platform ? `?platform=${platform}&limit=${limit}` : `?limit=${limit}`}`),
 
   analytics:          () => withBase('/api/analytics'),
   analyticsSeries:    (platform?: string, days = 30) => withBase(`/api/analytics/series?days=${days}${platform?`&platform=${encodeURIComponent(platform)}`:''}`),

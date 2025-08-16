@@ -25,17 +25,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
+  const [recentPosts, setRecentPosts] = useState<{ platform?: string; title?: string; ts?: number }[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const [a, s, igSeries, ytSeries, b] = await Promise.all([
+        const [a, s, igSeries, ytSeries, b, rp] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.analyticsSeries('instagram', 30), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.analyticsSeries('youtube', 30), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({}))
+          fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({})),
+          fetch(API_ENDPOINTS.activityRecentPosts(undefined, 5), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] }))
         ]);
         setAnalytics(a || {});
         setStatus(s || {});
@@ -43,6 +45,7 @@ export default function DashboardPage() {
         setYtChart((ytSeries?.postCounts || []) as number[]);
         setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
         setBurst(b || {});
+        setRecentPosts((rp?.items || []).slice(0,5));
       } catch {
         setAnalytics({}); setStatus({}); setIgChart([]); setYtChart([]); setBurst(null);
       } finally { setLoading(false); }
@@ -80,6 +83,7 @@ export default function DashboardPage() {
             smoothing={smooth}
             showIG={showIG}
             showYT={showYT}
+            normalize
             speedFactor={Math.max(0.5, Math.min(3, ((igChart.reduce((a,b)=>a+b,0)/(igChart.length||1)) + (ytChart.reduce((a,b)=>a+b,0)/(ytChart.length||1)))/2))}
             onToggleIG={(v)=> setShowIG(v)}
             onToggleYT={(v)=> setShowYT(v)}
@@ -108,6 +112,26 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">📅 Upcoming Scheduled</h3>
+          <div className="btn-grid">
+            <a className="btn" href="/autopilot">Open Smart Queue →</a>
+            <div className="btn" style={{opacity:.7}}>Use Queue modal to view next scheduled items</div>
+          </div>
+        </div>
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">📰 Recently Posted</h3>
+          <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
+            {recentPosts.map((p, i) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{opacity:0.9}}>{p.title || 'Post'}</div>
+                <div style={{opacity:0.7}}>{p.platform?.toUpperCase()}</div>
+                <div style={{opacity:0.6}}>{p.ts ? new Date(p.ts).toLocaleString() : ''}</div>
+              </div>
+            ))}
+            {recentPosts.length === 0 && <div style={{opacity:0.7}}>No recent posts</div>}
+          </div>
+        </div>
+        <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>
           <ActivityHeatmap platform={platform} />
         </div>
@@ -117,11 +141,14 @@ export default function DashboardPage() {
             <button className="btn btn-primary" disabled={posting} onClick={async ()=>{
               try {
                 setPosting(true);
-                await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'next' }) });
+                await Promise.all([
+                  fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'instagram', scope:'next' }) }),
+                  fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'youtube', scope:'next' }) })
+                ]);
               } finally {
                 setPosting(false);
               }
-            }}>🚀 Post Now ({platform})</button>
+            }}>🚀 Post Now (All)</button>
             <a className="btn" href="/autopilot">Open AutoPilot</a>
             <div className="btn">Burst: {burst?.enabled ? 'Active' : 'Inactive'}</div>
           </div>
