@@ -1,6 +1,7 @@
 import './globals.css';
 import Particles from '@/components/Particles';
 import Navbar from '@/components/Navbar';
+import { ToastProvider } from '@/components/Toast';
 
 export const metadata = {
   title: 'Lifestyle App - Dashboard',
@@ -13,8 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div id="particles" className="bg-particles" />
         <Particles />
-        <Navbar />
-        <div className="container">{children}</div>
+        <ToastProvider>
+          <Navbar />
+          <div className="container">{children}</div>
+        </ToastProvider>
       </body>
     </html>
   );

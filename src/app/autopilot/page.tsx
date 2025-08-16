@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
+import { useToast } from '@/components/Toast';
 
 type Platform = 'instagram' | 'youtube';
 type QueueItemSummary = {
@@ -14,6 +15,7 @@ type QueueItemSummary = {
 };
 
 export default function AutopilotPage() {
+  const { show } = useToast();
   const [active, setActive] = useState(false);
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [burstLoading, setBurstLoading] = useState(false);
@@ -156,11 +158,11 @@ export default function AutopilotPage() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">⚡ Quick Actions</h3>
           <div className="btn-grid">
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRun(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>🕷️ Scrape</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRefill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>♻️ Refill</button>
-            <button className="btn btn-primary" onClick={async()=>{ await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'all' }) }); }}>🚀 Post Now ({platform})</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>✋ Manual Post</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.schedulerAutofill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>📅 Autofill</button>
+            <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotRun(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Scrape started' : 'Scrape failed', r.ok?'success':'error'); }}>🕷️ Scrape</button>
+            <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotRefill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Refill queued' : 'Refill failed', r.ok?'success':'error'); }}>♻️ Refill</button>
+            <button className="btn btn-primary" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'all' }) }); show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error'); }}>🚀 Post Now ({platform})</button>
+            <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Manual post queued' : 'Manual post failed', r.ok?'success':'error'); }}>✋ Manual Post</button>
+            <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.schedulerAutofill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Autofill scheduled' : 'Autofill failed', r.ok?'success':'error'); }}>📅 Autofill</button>
             <a className="btn" href="/dashboard">← Back to Dashboard</a>
           </div>
         </div>

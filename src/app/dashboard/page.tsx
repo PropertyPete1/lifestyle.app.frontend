@@ -17,21 +17,24 @@ export default function DashboardPage() {
   const [chart, setChart] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const [a, s, c] = await Promise.all([
+        const [a, s, c, b] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.chartStatus(), { cache: 'no-store' }).then(r => r.json()),
+          fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({}))
         ]);
         setAnalytics(a || {});
         setStatus(s || {});
         setChart((c?.series || c?.data || []) as number[]);
+        setBurst(b || {});
       } catch {
-        setAnalytics({}); setStatus({}); setChart([]);
+        setAnalytics({}); setStatus({}); setChart([]); setBurst(null);
       } finally { setLoading(false); }
     })();
   }, [platform]);
@@ -78,6 +81,7 @@ export default function DashboardPage() {
               }
             }}>🚀 Post Now ({platform})</button>
             <a className="btn" href="/autopilot">Open AutoPilot</a>
+            <div className="btn">Burst: {burst?.enabled ? 'Active' : 'Inactive'}</div>
           </div>
         </div>
         {platform==='instagram' ? (
