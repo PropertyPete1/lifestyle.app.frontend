@@ -67,7 +67,7 @@ export default function DashboardPage() {
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>
-          <ActivityHeatmap />
+          <ActivityHeatmap platform={platform} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">⚡ Quick Actions</h3>
