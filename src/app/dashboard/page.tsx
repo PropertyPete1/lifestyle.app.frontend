@@ -63,7 +63,7 @@ export default function DashboardPage() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📈 Wave & Lines</h3>
           <ChartWave />
-          <ChartLines points={chart} />
+          <ChartLines igSeries={platform==='instagram'?chart:[]} ytSeries={platform==='youtube'?chart:[]} speedFactor={Math.max(0.5, Math.min(3, (chart.reduce((a,b)=>a+b,0)/(chart.length||1))/2))} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>

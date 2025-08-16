@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
+import ChartLines from '@/components/ChartLines';
 
 type Analytics = { instagram?: { followers?: number|string|null; engagement?: string|null; reach?: number|null }; youtube?: { subscribers?: number|string|null; watchTime?: string|null; views?: number|null } };
 type ActivityItem = { _id?: string; id?: string; ts?: number; platform?: 'instagram'|'youtube'|string; type?: string; message?: string };
@@ -71,12 +72,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📆 Activity Series ({platform})</h3>
-          <div className="btn-grid">
-            <div className="btn">Days: {series.dates.length}</div>
-            <div className="btn">Posts Sum: {series.postCounts.reduce((a,b)=>a+b,0)}</div>
-            <div className="btn">Likes Sum: {series.likeCounts.reduce((a,b)=>a+b,0)}</div>
-            <div className="btn">Comments Sum: {series.commentCounts.reduce((a,b)=>a+b,0)}</div>
-          </div>
+          <ChartLines igSeries={platform==='instagram'?series.postCounts:[]} ytSeries={platform==='youtube'?series.postCounts:[]} speedFactor={Math.max(0.5, Math.min(3, (series.postCounts.reduce((a,b)=>a+b,0)/(series.postCounts.length||1))/2))} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🕒 Posts by Hour ({platform})</h3>
