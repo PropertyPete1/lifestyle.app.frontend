@@ -73,6 +73,9 @@ export default function DashboardPage() {
     <div>
       <div className="page-header">
         <h1 className="page-title vintage-accent">Dashboard</h1>
+        {burst?.enabled && (
+          <div className="btn" style={{ display:'inline-block', marginTop:8 }}>🌩️ Burst ON</div>
+        )}
         <p className="page-subtitle">Command center for your social media empire</p>
       </div>
       <div className="dashboard-grid">
