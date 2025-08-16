@@ -127,6 +127,11 @@ function AutopilotPageInner() {
     loadBurstStatus();
     loadQueue();
   }, [loadQueue]);
+
+  // Auto-refresh queue when filters change
+  useEffect(() => {
+    loadQueue();
+  }, [platform, dateFilter, statusFilter, scheduledFilter, q, page]);
   const toggle = () => {
     const loader = document.getElementById('autopilotLoader');
     const status = document.getElementById('autopilotStatus');

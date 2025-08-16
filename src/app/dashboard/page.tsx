@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const [igChart, setIgChart] = useState<number[]>([]);
   const [ytChart, setYtChart] = useState<number[]>([]);
   const [seriesDates, setSeriesDates] = useState<string[]>([]);
+  const [showIG, setShowIG] = useState(true);
+  const [showYT, setShowYT] = useState(true);
+  const [smooth, setSmooth] = useState(true);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
@@ -74,11 +77,13 @@ export default function DashboardPage() {
             igSeries={igChart}
             ytSeries={ytChart}
             dates={seriesDates}
-            smoothing
+            smoothing={smooth}
+            showIG={showIG}
+            showYT={showYT}
             speedFactor={Math.max(0.5, Math.min(3, ((igChart.reduce((a,b)=>a+b,0)/(igChart.length||1)) + (ytChart.reduce((a,b)=>a+b,0)/(ytChart.length||1)))/2))}
-            onToggleIG={()=>{/* noop - local overlay controls */}}
-            onToggleYT={()=>{/* noop */}}
-            onToggleSmoothing={()=>{/* noop */}}
+            onToggleIG={(v)=> setShowIG(v)}
+            onToggleYT={(v)=> setShowYT(v)}
+            onToggleSmoothing={(v)=> setSmooth(v)}
             onClickDate={(date)=>{
               // deep-link to Autopilot with date & platform preserved
               const params = new URLSearchParams();
@@ -87,6 +92,12 @@ export default function DashboardPage() {
               router.push(`/autopilot?${params.toString()}`);
             }}
           />
+          <div className="btn-grid" style={{ marginTop: 8 }}>
+            <button className="btn" onClick={()=>{ setShowIG(true); setShowYT(true); setSmooth(true); }}>Reset</button>
+            <div className="btn">IG: {showIG ? 'On' : 'Off'}</div>
+            <div className="btn">YT: {showYT ? 'On' : 'Off'}</div>
+            <div className="btn">Smooth: {smooth ? 'On' : 'Off'}</div>
+          </div>
           <div className="btn-grid" style={{ marginTop: 8 }}>
             <button className="btn" onClick={(e)=>{
               e.preventDefault();
