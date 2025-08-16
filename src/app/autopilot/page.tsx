@@ -27,6 +27,8 @@ export default function AutopilotPage() {
   const [diagSummary, setDiagSummary] = useState<string>('');
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueItems, setQueueItems] = useState<QueueItemSummary[]>([]);
+  const [queueModalOpen, setQueueModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<QueueItemSummary | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -200,6 +202,7 @@ export default function AutopilotPage() {
           <div className="btn-grid" style={{ marginBottom: '1rem' }}>
             <button className="btn" disabled={queueLoading} onClick={loadQueue}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
             <div className="btn">Items: {queueItems.length}</div>
+            <button className="btn btn-primary" onClick={()=>{ setQueueModalOpen(true); setSelectedItem(null); }}>Open Queue</button>
           </div>
           <div style={{ maxHeight: '260px', overflowY: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem' }}>
             {queueItems.slice(0, 12).map((it, idx) => {
@@ -207,13 +210,70 @@ export default function AutopilotPage() {
               return (
                 <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                   <div style={{ opacity: 0.9 }}>{idx+1}. {String(title)}</div>
-                  <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                    <button className="btn" onClick={()=>{ setSelectedItem(it); setQueueModalOpen(true); }}>Details</button>
+                  </div>
                 </div>
               );
             })}
             {queueItems.length === 0 && !queueLoading && <div style={{opacity:0.7}}>No items</div>}
           </div>
         </div>
+        {queueModalOpen && (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div style={{ width:'min(960px, 92vw)', maxHeight:'88vh', overflow:'auto', background:'rgba(20,20,28,0.95)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'1rem 1.25rem', boxShadow:'0 10px 40px rgba(0,0,0,0.5)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
+                <h3 className="card-title" style={{ margin:0 }}>Smart Queue ({platform})</h3>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn" onClick={()=>{ setSelectedItem(null); setQueueModalOpen(false); }}>Close</button>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem' }}>
+                <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
+                  {queueItems.map((it, idx) => {
+                    const title = it?.title || it?.caption || it?.videoId || it?._id || it?.id || `Item ${idx+1}`;
+                    const isSel = (selectedItem && (selectedItem._id||selectedItem.id||selectedItem.videoId)) === (it._id||it.id||it.videoId);
+                    return (
+                      <div key={idx} onClick={()=>setSelectedItem(it)} style={{ padding:'0.6rem 0.5rem', borderBottom:'1px solid rgba(255,255,255,0.06)', background: isSel? 'rgba(255,255,255,0.06)' : 'transparent', cursor:'pointer', borderRadius:6 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <div style={{ opacity:0.9 }}>{idx+1}. {String(title)}</div>
+                          <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {queueItems.length === 0 && <div style={{opacity:0.7, padding:'0.5rem'}}>No items</div>}
+                </div>
+                <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.75rem' }}>
+                  <h4 style={{ marginTop:0, marginBottom:'0.5rem' }}>Details</h4>
+                  {!selectedItem && <div style={{opacity:0.7}}>Select an item to see details</div>}
+                  {selectedItem && (
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      <div><b>Title</b>: {selectedItem.title || selectedItem.caption || selectedItem.videoId || selectedItem._id || selectedItem.id}</div>
+                      {selectedItem.caption && <div style={{opacity:0.9}}>{selectedItem.caption}</div>}
+                      <div style={{opacity:0.7}}>ID: {selectedItem._id || selectedItem.id || selectedItem.videoId}</div>
+                      <div className="btn-grid" style={{ marginTop:'0.5rem' }}>
+                        <button className="btn btn-primary" onClick={async()=>{
+                          const id = selectedItem._id || selectedItem.id || selectedItem.videoId;
+                          const r = await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, itemId:id }) });
+                          show(r.ok? 'Manual post queued' : 'Manual post failed', r.ok?'success':'error');
+                        }}>✋ Manual Post</button>
+                        <button className="btn" onClick={async()=>{
+                          const id = selectedItem._id || selectedItem.id || selectedItem.videoId;
+                          const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'single', itemId:id }) });
+                          show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
+                        }}>🚀 Post Now</button>
+                        <button className="btn" disabled title="Pending backend support">⬆️ Prioritize</button>
+                        <button className="btn" disabled title="Pending backend support">🗑 Remove</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
