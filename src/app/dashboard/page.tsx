@@ -23,15 +23,15 @@ export default function DashboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const [a, s, c, b] = await Promise.all([
+        const [a, s, series, b] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.chartStatus(), { cache: 'no-store' }).then(r => r.json()),
+          fetch(API_ENDPOINTS.analyticsSeries(platform, 30), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({}))
         ]);
         setAnalytics(a || {});
         setStatus(s || {});
-        setChart((c?.series || c?.data || []) as number[]);
+        setChart((series?.postCounts || []) as number[]);
         setBurst(b || {});
       } catch {
         setAnalytics({}); setStatus({}); setChart([]); setBurst(null);

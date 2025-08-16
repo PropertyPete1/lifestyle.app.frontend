@@ -22,9 +22,9 @@ export default function AnalyticsPage() {
     (async () => {
       try {
         setLoading(true);
-        const [a, c, ig, yt, s, h, w] = await Promise.all([
+        const [a, _c, ig, yt, s, h, w] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.chartStatus(), { cache: 'no-store' }).then(r => r.json()),
+          Promise.resolve({}),
           fetch(API_ENDPOINTS.activityFeed('instagram', 10), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
           fetch(API_ENDPOINTS.activityFeed('youtube', 10), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
           fetch(API_ENDPOINTS.analyticsSeries(platform, 30), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ dates:[], postCounts:[], likeCounts:[], commentCounts:[] })),
@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
           fetch(API_ENDPOINTS.analyticsPostsPerWeekday(platform), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ weekdays: Array.from({length:7},()=>0) })),
         ]);
         setAnalytics(a || {});
-        setChart((c?.series || c?.data || []) as number[]);
+        setChart((s?.postCounts || []) as number[]);
         setIgFeed((ig?.items as ActivityItem[]) || []);
         setYtFeed((yt?.items as ActivityItem[]) || []);
         setSeries(s || { dates: [], postCounts: [], likeCounts: [], commentCounts: [] });
