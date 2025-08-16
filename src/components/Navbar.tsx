@@ -11,7 +11,7 @@ export default function Navbar() {
       <div className="navbar-left">
         <Link href="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
         <Link href="/autopilot" className={`nav-link ${isActive('/autopilot') ? 'active' : ''}`}>AutoPilot</Link>
-        <a href="#" className="nav-link" onClick={(e)=>{e.preventDefault(); console.log('Analytics clicked')}}>Analytics</a>
+        <Link href="/analytics" className={`nav-link ${isActive('/analytics') ? 'active' : ''}`}>Analytics</Link>
       </div>
       <div className="navbar-right">
         <a href="#" className="nav-link" onClick={(e)=>{e.preventDefault(); console.log('Upload clicked')}}>Upload</a>
