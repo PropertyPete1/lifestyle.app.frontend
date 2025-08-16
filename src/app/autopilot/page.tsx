@@ -30,6 +30,8 @@ export default function AutopilotPage() {
   const [queueModalOpen, setQueueModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<QueueItemSummary | null>(null);
   const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [scheduledFilter, setScheduledFilter] = useState<''|'true'|'false'>('');
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -97,14 +99,16 @@ export default function AutopilotPage() {
   const loadQueue = useCallback(async () => {
     try {
       setQueueLoading(true);
-      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50, page, q), { cache: 'no-store' });
+      const statusParam = statusFilter || undefined;
+      const scheduledParam = scheduledFilter === '' ? undefined : scheduledFilter;
+      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50, page, q, statusParam, scheduledParam), { cache: 'no-store' });
       const json = await res.json();
       setQueueItems((json?.items as QueueItemSummary[]) || []);
       setPages(json?.pages || 1);
       setTotal(json?.total || 0);
     } catch { setQueueItems([]); setPages(1); setTotal(0); }
     finally { setQueueLoading(false); }
-  }, [platform, page, q]);
+  }, [platform, page, q, statusFilter, scheduledFilter]);
 
   useEffect(() => {
     // Initial loads when page opens or platform changes
@@ -231,8 +235,20 @@ export default function AutopilotPage() {
             <div style={{ width:'min(1024px, 94vw)', maxHeight:'88vh', overflow:'auto', background:'rgba(20,20,28,0.95)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'1rem 1.25rem', boxShadow:'0 10px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
                 <h3 className="card-title" style={{ margin:0 }}>Smart Queue ({platform})</h3>
-                <div style={{ display:'flex', gap:8 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                   <input value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} placeholder="Search…" style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }} />
+                  <select value={statusFilter} onChange={(e)=>{ setPage(1); setStatusFilter(e.target.value); }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }}>
+                    <option value="">All Status</option>
+                    <option value="queued">Queued</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="posted">Posted</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                  <select value={scheduledFilter} onChange={(e)=>{ setPage(1); setScheduledFilter(e.target.value as 'true'|'false'|''); }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }}>
+                    <option value="">All</option>
+                    <option value="true">Scheduled</option>
+                    <option value="false">Unscheduled</option>
+                  </select>
                   <button className="btn" onClick={()=>{ setSelectedItem(null); setQueueModalOpen(false); }}>Close</button>
                 </div>
               </div>
