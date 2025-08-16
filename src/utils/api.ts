@@ -24,8 +24,8 @@ export const API_ENDPOINTS = {
   settings: () => withBase('/api/settings'),
 
   autopilotStatus: () => withBase('/api/autopilot/status'),
-  autopilotQueue: (platform?: string, limit = 50, page = 1, q?: string, status?: string, scheduled?: 'true'|'false') =>
-    withBase(`/api/autopilot/queue${`?limit=${limit}&page=${page}`}${platform ? `&platform=${encodeURIComponent(platform)}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}${status ? `&status=${encodeURIComponent(status)}` : ''}${scheduled ? `&scheduled=${scheduled}` : ''}`),
+  autopilotQueue: (platform?: string, limit = 50, page = 1, q?: string, status?: string, scheduled?: 'true'|'false', date?: string) =>
+    withBase(`/api/autopilot/queue${`?limit=${limit}&page=${page}`}${platform ? `&platform=${encodeURIComponent(platform)}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}${status ? `&status=${encodeURIComponent(status)}` : ''}${scheduled ? `&scheduled=${scheduled}` : ''}${date ? `&date=${encodeURIComponent(date)}` : ''}`),
   autopilotRun:       () => withBase('/api/autopilot/run'),
   autopilotRefill:    () => withBase('/api/autopilot/refill'),
   autopilotManualPost:() => withBase('/api/autopilot/manual-post'),

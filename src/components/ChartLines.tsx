@@ -7,22 +7,47 @@ type Props = {
   ytSeries?: number[];
   height?: number;
   speedFactor?: number; // 1.0 normal; >1 faster
+  dates?: string[]; // optional labels for ticks/tooltip
+  smoothing?: boolean; // moving average smoothing
+  showIG?: boolean;
+  showYT?: boolean;
+  onToggleIG?: (show: boolean) => void;
+  onToggleYT?: (show: boolean) => void;
+  onToggleSmoothing?: (smooth: boolean) => void;
+  onClickDate?: (date: string) => void;
 };
 
-export default function ChartLines({ points = [], igSeries, ytSeries, height = 140, speedFactor = 1 }: Props) {
+export default function ChartLines({ points = [], igSeries, ytSeries, height = 140, speedFactor = 1, dates = [], smoothing = false, showIG = true, showYT = true, onToggleIG, onToggleYT, onToggleSmoothing, onClickDate }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dpr, setDpr] = useState(1);
+  const [hoverX, setHoverX] = useState<number | null>(null);
 
   const mode: 'dual' | 'single' = igSeries || ytSeries ? 'dual' : 'single';
   const seriesA = useMemo(() => (mode === 'dual' ? (igSeries || []) : points), [mode, igSeries, points]);
   const seriesB = useMemo(() => (mode === 'dual' ? (ytSeries || []) : []), [mode, ytSeries]);
 
   const maxVal = useMemo(() => {
-    const all = [...seriesA, ...seriesB];
+    const all = [ ...(showIG ? seriesA : []), ...(showYT ? seriesB : []) ];
     const m = Math.max(1, ...(all.length ? all : [1]));
     return m;
-  }, [seriesA, seriesB]);
+  }, [seriesA, seriesB, showIG, showYT]);
+
+  const smooth = (data: number[], windowSize = 7): number[] => {
+    if (!smoothing || windowSize <= 1) return data;
+    const out: number[] = new Array(data.length).fill(0);
+    let acc = 0;
+    for (let i = 0; i < data.length; i++) {
+      acc += data[i] || 0;
+      if (i >= windowSize) acc -= data[i - windowSize] || 0;
+      const denom = i < windowSize ? (i + 1) : windowSize;
+      out[i] = acc / denom;
+    }
+    return out;
+  };
+
+  const sA = useMemo(() => smooth(seriesA, 7), [seriesA, smoothing]);
+  const sB = useMemo(() => smooth(seriesB, 7), [seriesB, smoothing]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -65,7 +90,7 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
       }
       ctx.restore();
 
-      const drawSeries = (data: number[], colorMain: string, glow: string) => {
+      const drawSeries = (data: number[], colorMain: string, glowBase: string) => {
         if (!data.length) return;
         // Path
         ctx.save();
@@ -88,15 +113,16 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
         }
         ctx.stroke();
         // Glow
+        const glowAlpha = Math.max(0.06, Math.min(0.28, 0.12 * speedFactor));
         ctx.lineWidth = Math.max(4, dpr * 4);
-        ctx.strokeStyle = glow;
+        ctx.strokeStyle = glowBase.replace(/\d?\.\d+\)/, `${glowAlpha})`);
         ctx.stroke();
         ctx.restore();
       };
 
       // Draw IG (pink) and YT (red)
-      drawSeries(seriesA, 'rgba(255,105,180,0.9)', 'rgba(255,105,180,0.15)');
-      drawSeries(seriesB, 'rgba(255,60,60,0.85)', 'rgba(255,60,60,0.12)');
+      if (showIG) drawSeries(sA, 'rgba(255,105,180,0.9)', 'rgba(255,105,180,0.15)');
+      if (showYT) drawSeries(sB, 'rgba(255,60,60,0.85)', 'rgba(255,60,60,0.12)');
 
       // Sparkle dots
       const sparkle = (data: number[], color: string) => {
@@ -115,8 +141,60 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
           ctx.fill();
         }
       };
-      sparkle(seriesA, 'rgba(255,105,180,0.9)');
-      sparkle(seriesB, 'rgba(255,60,60,0.9)');
+      if (showIG) sparkle(sA, 'rgba(255,105,180,0.9)');
+      if (showYT) sparkle(sB, 'rgba(255,60,60,0.9)');
+
+      // Day ticks (every 7th index based on provided dates)
+      if (dates.length > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = Math.max(1, dpr);
+        const n = dates.length;
+        const step = 7;
+        for (let i = 0; i < n; i += step) {
+          const x = Math.floor((i / Math.max(1, n - 1)) * width);
+          ctx.beginPath(); ctx.moveTo(x, heightPx - 1); ctx.lineTo(x, heightPx - Math.max(8, dpr * 8)); ctx.stroke();
+          const label = (dates[i] || '').slice(5); // MM-DD
+          ctx.font = `${Math.max(10, dpr * 10)}px system-ui`;
+          ctx.textAlign = 'center';
+          ctx.fillText(label, x, heightPx - Math.max(12, dpr * 12));
+        }
+        ctx.restore();
+      }
+
+      // Hover tooltip
+      if (hoverX != null) {
+        const xPx = hoverX * width;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = Math.max(1, dpr);
+        ctx.beginPath(); ctx.moveTo(xPx, 0); ctx.lineTo(xPx, heightPx); ctx.stroke();
+
+        const drawPointInfo = (data: number[], color: string) => {
+          if (!data.length) return { y: 0, val: 0 };
+          const n = data.length;
+          const u = hoverX * (n - 1);
+          const i0 = Math.floor(u);
+          const v0 = data[i0] || 0; const v1 = data[i0 + 1] ?? v0; const frac = u - i0; const v = v0 + (v1 - v0) * frac;
+          const y = heightPx - (v / maxVal) * (heightPx * 0.9) - heightPx * 0.05;
+          ctx.beginPath(); ctx.fillStyle = color; ctx.arc(xPx, y, Math.max(2, dpr * 2), 0, Math.PI * 2); ctx.fill();
+          return { y, val: v };
+        };
+        const a = showIG ? drawPointInfo(sA, 'hotpink') : { y: 0, val: 0 };
+        const b = showYT ? drawPointInfo(sB, '#ff3c3c') : { y: 0, val: 0 };
+        const dateIdx = dates.length ? Math.round(hoverX * (dates.length - 1)) : -1;
+        const dateStr = dateIdx >= 0 ? dates[dateIdx] : '';
+        const lines = [dateStr && `📅 ${dateStr}`, showIG && `IG: ${Math.round(a.val)}`, showYT && `YT: ${Math.round(b.val)}`].filter(Boolean) as string[];
+        const boxW = 120, boxH = 16 * lines.length + 10;
+        const bx = Math.min(width - boxW - 4, Math.max(4, xPx + 8));
+        const by = 8;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = Math.max(1, dpr);
+        ctx.beginPath(); ctx.rect(bx, by, boxW, boxH); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'white'; ctx.font = `${Math.max(11, dpr * 11)}px system-ui`;
+        lines.forEach((txt, i) => ctx.fillText(txt, bx + 8, by + 18 + i * 16));
+        ctx.restore();
+      }
 
       // Advance time
       raf = requestAnimationFrame(render);
@@ -125,17 +203,39 @@ export default function ChartLines({ points = [], igSeries, ytSeries, height = 1
       t += 0.006 * speed;
     };
     raf = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(raf);
-  }, [seriesA, seriesB, maxVal, dpr, speedFactor]);
+  }, [seriesA, seriesB, maxVal, dpr, speedFactor, dates, hoverX, sA, sB, showIG, showYT]);
+
+  const onClick = () => {
+    if (onClickDate && hoverX != null && dates.length) {
+      const idx = Math.round(hoverX * (dates.length - 1));
+      onClickDate(dates[idx]);
+    }
+  };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height, marginTop: 12, borderRadius: 10, overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ position: 'relative', height, marginTop: 12, borderRadius: 10, overflow: 'hidden' }}
+         onClick={onClick}
+         onMouseMove={(e)=>{
+           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+           const x = (e.clientX - rect.left) / Math.max(1, rect.width);
+           setHoverX(Math.max(0, Math.min(1, x)));
+         }}
+         onMouseLeave={()=> setHoverX(null)}>
       <canvas ref={canvasRef} />
-      {/* Legend */}
+      {/* Overlay controls */}
       {mode === 'dual' && (
-        <div style={{ position: 'absolute', right: 8, top: 6, display: 'flex', gap: 12, fontSize: 12, opacity: 0.9 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width:10, height:4, background:'hotpink', display:'inline-block', borderRadius:2 }} /> IG</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width:10, height:4, background:'#ff3c3c', display:'inline-block', borderRadius:2 }} /> YT</span>
+        <div style={{ position: 'absolute', right: 8, top: 6, display: 'flex', gap: 12, fontSize: 12, alignItems:'center' }}>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }}>
+            <input type="checkbox" checked={showIG} onChange={(e)=> onToggleIG?.(e.target.checked)} />
+            <i style={{ width:10, height:4, background:'hotpink', display:'inline-block', borderRadius:2 }} /> IG
+          </label>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }}>
+            <input type="checkbox" checked={showYT} onChange={(e)=> onToggleYT?.(e.target.checked)} />
+            <i style={{ width:10, height:4, background:'#ff3c3c', display:'inline-block', borderRadius:2 }} /> YT
+          </label>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }}>
+            <input type="checkbox" checked={smoothing} onChange={(e)=> onToggleSmoothing?.(e.target.checked)} /> Smooth
+          </label>
         </div>
       )}
     </div>

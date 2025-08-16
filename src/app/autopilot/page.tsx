@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/utils/api';
 import { useToast } from '@/components/Toast';
 
@@ -14,8 +15,9 @@ type QueueItemSummary = {
   platform?: Platform | string;
 };
 
-export default function AutopilotPage() {
+function AutopilotPageInner() {
   const { show } = useToast();
+  const search = useSearchParams();
   const [active, setActive] = useState(false);
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [burstLoading, setBurstLoading] = useState(false);
@@ -35,12 +37,22 @@ export default function AutopilotPage() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [dateFilter, setDateFilter] = useState<string>('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const saved = localStorage.getItem('platform');
     if (saved === 'instagram' || saved === 'youtube') setPlatform(saved);
   }, []);
+
+  // Read deep-link params
+  useEffect(() => {
+    const p = search?.get('platform');
+    const d = search?.get('date');
+    if (p === 'instagram' || p === 'youtube') setPlatform(p);
+    if (d) setDateFilter(d);
+    if (d) setQueueModalOpen(true);
+  }, [search]);
 
   const setPlatformPersist = (p: Platform) => {
     setPlatform(p);
@@ -101,14 +113,14 @@ export default function AutopilotPage() {
       setQueueLoading(true);
       const statusParam = statusFilter || undefined;
       const scheduledParam = scheduledFilter === '' ? undefined : scheduledFilter;
-      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50, page, q, statusParam, scheduledParam), { cache: 'no-store' });
+      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50, page, q, statusParam, scheduledParam, dateFilter || undefined), { cache: 'no-store' });
       const json = await res.json();
       setQueueItems((json?.items as QueueItemSummary[]) || []);
       setPages(json?.pages || 1);
       setTotal(json?.total || 0);
     } catch { setQueueItems([]); setPages(1); setTotal(0); }
     finally { setQueueLoading(false); }
-  }, [platform, page, q, statusFilter, scheduledFilter]);
+  }, [platform, page, q, statusFilter, scheduledFilter, dateFilter]);
 
   useEffect(() => {
     // Initial loads when page opens or platform changes
@@ -142,6 +154,7 @@ export default function AutopilotPage() {
     }, 1500);
   };
   return (
+    <Suspense fallback={<div style={{opacity:.7}}>Loading…</div>}>
     <div>
       <div className="page-header">
         <h1 className="page-title vintage-accent">AutoPilot Dashboard</h1>
@@ -237,6 +250,7 @@ export default function AutopilotPage() {
                 <h3 className="card-title" style={{ margin:0 }}>Smart Queue ({platform})</h3>
                 <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                   <input value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} placeholder="Search…" style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }} />
+                  <input type="date" value={dateFilter} onChange={(e)=>{ setPage(1); setDateFilter(e.target.value); }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }} />
                   <select value={statusFilter} onChange={(e)=>{ setPage(1); setStatusFilter(e.target.value); }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }}>
                     <option value="">All Status</option>
                     <option value="queued">Queued</option>
@@ -326,5 +340,14 @@ export default function AutopilotPage() {
         )}
       </div>
     </div>
+    </Suspense>
+  );
+}
+
+export default function AutopilotPage() {
+  return (
+    <Suspense fallback={<div style={{opacity:.7}}>Loading…</div>}>
+      <AutopilotPageInner />
+    </Suspense>
   );
 }

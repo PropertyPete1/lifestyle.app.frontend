@@ -72,7 +72,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📆 Activity Series ({platform})</h3>
-          <ChartLines igSeries={platform==='instagram'?series.postCounts:[]} ytSeries={platform==='youtube'?series.postCounts:[]} speedFactor={Math.max(0.5, Math.min(3, (series.postCounts.reduce((a,b)=>a+b,0)/(series.postCounts.length||1))/2))} />
+          <ChartLines igSeries={platform==='instagram'?series.postCounts:[]} ytSeries={platform==='youtube'?series.postCounts:[]} dates={series.dates} smoothing speedFactor={Math.max(0.5, Math.min(3, (series.postCounts.reduce((a,b)=>a+b,0)/(series.postCounts.length||1))/2))} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🕒 Posts by Hour ({platform})</h3>
