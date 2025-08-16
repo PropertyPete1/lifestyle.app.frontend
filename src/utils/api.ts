@@ -29,6 +29,8 @@ export const API_ENDPOINTS = {
   autopilotRun:       () => withBase('/api/autopilot/run'),
   autopilotRefill:    () => withBase('/api/autopilot/refill'),
   autopilotManualPost:() => withBase('/api/autopilot/manual-post'),
+  autopilotQueuePrioritize: () => withBase('/api/autopilot/queue/prioritize'),
+  autopilotQueueRemove:     () => withBase('/api/autopilot/queue/remove'),
 
   burstGet:           () => withBase('/api/burst'),
   burstPost:          () => withBase('/api/burst'),

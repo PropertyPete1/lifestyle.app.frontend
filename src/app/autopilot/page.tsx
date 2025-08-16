@@ -264,8 +264,28 @@ export default function AutopilotPage() {
                           const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'single', itemId:id }) });
                           show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
                         }}>🚀 Post Now</button>
-                        <button className="btn" disabled title="Pending backend support">⬆️ Prioritize</button>
-                        <button className="btn" disabled title="Pending backend support">🗑 Remove</button>
+                        <button className="btn" onClick={async()=>{
+                          const id = selectedItem._id || selectedItem.id || selectedItem.videoId;
+                          // optimistic: move to top locally
+                          setQueueItems(prev => {
+                            const idx = prev.findIndex(x => (x._id||x.id||x.videoId) === id);
+                            if (idx <= 0) return prev;
+                            const copy = [...prev];
+                            const [item] = copy.splice(idx,1);
+                            copy.unshift(item);
+                            return copy;
+                          });
+                          const r = await fetch(API_ENDPOINTS.autopilotQueuePrioritize(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, itemId:id }) });
+                          show(r.ok? 'Prioritized' : 'Prioritize failed', r.ok?'success':'error');
+                        }}>⬆️ Prioritize</button>
+                        <button className="btn" onClick={async()=>{
+                          const id = selectedItem._id || selectedItem.id || selectedItem.videoId;
+                          // optimistic: remove locally
+                          setQueueItems(prev => prev.filter(x => (x._id||x.id||x.videoId) !== id));
+                          setSelectedItem(null);
+                          const r = await fetch(API_ENDPOINTS.autopilotQueueRemove(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, itemId:id }) });
+                          show(r.ok? 'Removed from queue' : 'Remove failed', r.ok?'success':'error');
+                        }}>🗑 Remove</button>
                       </div>
                     </div>
                   )}
