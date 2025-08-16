@@ -29,6 +29,10 @@ export default function AutopilotPage() {
   const [queueItems, setQueueItems] = useState<QueueItemSummary[]>([]);
   const [queueModalOpen, setQueueModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<QueueItemSummary | null>(null);
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -93,12 +97,14 @@ export default function AutopilotPage() {
   const loadQueue = useCallback(async () => {
     try {
       setQueueLoading(true);
-      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50), { cache: 'no-store' });
+      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50, page, q), { cache: 'no-store' });
       const json = await res.json();
       setQueueItems((json?.items as QueueItemSummary[]) || []);
-    } catch { setQueueItems([]); }
+      setPages(json?.pages || 1);
+      setTotal(json?.total || 0);
+    } catch { setQueueItems([]); setPages(1); setTotal(0); }
     finally { setQueueLoading(false); }
-  }, [platform]);
+  }, [platform, page, q]);
 
   useEffect(() => {
     // Initial loads when page opens or platform changes
@@ -200,8 +206,8 @@ export default function AutopilotPage() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📋 Smart Queue</h3>
           <div className="btn-grid" style={{ marginBottom: '1rem' }}>
-            <button className="btn" disabled={queueLoading} onClick={loadQueue}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
-            <div className="btn">Items: {queueItems.length}</div>
+            <button className="btn" disabled={queueLoading} onClick={()=>{ setPage(1); loadQueue(); }}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
+            <div className="btn">Items: {total}</div>
             <button className="btn btn-primary" onClick={()=>{ setQueueModalOpen(true); setSelectedItem(null); }}>Open Queue</button>
           </div>
           <div style={{ maxHeight: '260px', overflowY: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem' }}>
@@ -222,10 +228,11 @@ export default function AutopilotPage() {
         </div>
         {queueModalOpen && (
           <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <div style={{ width:'min(960px, 92vw)', maxHeight:'88vh', overflow:'auto', background:'rgba(20,20,28,0.95)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'1rem 1.25rem', boxShadow:'0 10px 40px rgba(0,0,0,0.5)' }}>
+            <div style={{ width:'min(1024px, 94vw)', maxHeight:'88vh', overflow:'auto', background:'rgba(20,20,28,0.95)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'1rem 1.25rem', boxShadow:'0 10px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
                 <h3 className="card-title" style={{ margin:0 }}>Smart Queue ({platform})</h3>
                 <div style={{ display:'flex', gap:8 }}>
+                  <input value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} placeholder="Search…" style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', padding:'6px 10px', borderRadius:8 }} />
                   <button className="btn" onClick={()=>{ setSelectedItem(null); setQueueModalOpen(false); }}>Close</button>
                 </div>
               </div>
@@ -237,13 +244,20 @@ export default function AutopilotPage() {
                     return (
                       <div key={idx} onClick={()=>setSelectedItem(it)} style={{ padding:'0.6rem 0.5rem', borderBottom:'1px solid rgba(255,255,255,0.06)', background: isSel? 'rgba(255,255,255,0.06)' : 'transparent', cursor:'pointer', borderRadius:6 }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                          <div style={{ opacity:0.9 }}>{idx+1}. {String(title)}</div>
+                          <div style={{ opacity:0.9 }}>{idx+1 + (page-1)*50}. {String(title)}</div>
                           <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
                         </div>
                       </div>
                     );
                   })}
                   {queueItems.length === 0 && <div style={{opacity:0.7, padding:'0.5rem'}}>No items</div>}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.5rem 0' }}>
+                    <div className="btn">Page {page} / {pages}</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button className="btn" disabled={page<=1} onClick={()=> setPage(p=>Math.max(1, p-1))}>← Prev</button>
+                      <button className="btn" disabled={page>=pages} onClick={()=> setPage(p=>Math.min(pages, p+1))}>Next →</button>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.75rem' }}>
                   <h4 style={{ marginTop:0, marginBottom:'0.5rem' }}>Details</h4>
