@@ -3,8 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
 
+type Platform = 'instagram' | 'youtube';
+
 export default function AutopilotPage() {
   const [active, setActive] = useState(false);
+  const [platform, setPlatform] = useState<Platform>('instagram');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('platform');
+    if (saved === 'instagram' || saved === 'youtube') setPlatform(saved);
+  }, []);
+
+  const setPlatformPersist = (p: Platform) => {
+    setPlatform(p);
+    if (typeof window !== 'undefined') localStorage.setItem('platform', p);
+  };
   const toggle = () => {
     const loader = document.getElementById('autopilotLoader');
     const status = document.getElementById('autopilotStatus');
@@ -39,6 +53,13 @@ export default function AutopilotPage() {
       </div>
       <div className="dashboard-grid">
         <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">🎯 Social Platforms</h3>
+          <div className="btn-grid">
+            <button className={`btn btn-toggle ${platform==='instagram'?'active':''}`} onClick={() => setPlatformPersist('instagram')}>📷 Instagram</button>
+            <button className={`btn btn-toggle ${platform==='youtube'?'active':''}`} onClick={() => setPlatformPersist('youtube')}>📺 YouTube</button>
+          </div>
+        </div>
+        <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🚀 AutoPilot Control</h3>
           <div style={{ marginBottom: '1.5rem' }}>
             <div className="status-indicator status-inactive" id="autopilotStatus">
@@ -53,11 +74,11 @@ export default function AutopilotPage() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">⚡ Quick Actions</h3>
           <div className="btn-grid">
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRun(), { method:'POST' }); }}>🕷️ Scrape</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRefill(), { method:'POST' }); }}>♻️ Refill</button>
-            <button className="btn btn-primary" onClick={async()=>{ await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'instagram', scope:'all' }) }); }}>🚀 Post Now</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'instagram' }) }); }}>✋ Manual Post</button>
-            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.schedulerAutofill(), { method:'POST' }); }}>📅 Autofill</button>
+            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRun(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>🕷️ Scrape</button>
+            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotRefill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>♻️ Refill</button>
+            <button className="btn btn-primary" onClick={async()=>{ await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'all' }) }); }}>🚀 Post Now ({platform})</button>
+            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>✋ Manual Post</button>
+            <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.schedulerAutofill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>📅 Autofill</button>
             <a className="btn" href="/dashboard">← Back to Dashboard</a>
           </div>
         </div>
