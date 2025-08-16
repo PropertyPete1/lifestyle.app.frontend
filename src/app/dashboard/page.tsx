@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/Toast';
 import ChartWave from '@/components/ChartWave';
 import ChartLines from '@/components/ChartLines';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
@@ -11,6 +12,7 @@ type Platform = 'instagram' | 'youtube';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { show } = useToast();
   const [platform, setPlatform] = useState<Platform>('instagram');
   type Analytics = { instagram?: { followers?: number|string; engagement?: string|null; reach?: number|null }; youtube?: { subscribers?: number|string; watchTime?: string|null; views?: number|null } };
   type Status = { running?: boolean; limits?: { hourlyLimit?: number; dailyLimit?: number } };
@@ -26,7 +28,7 @@ export default function DashboardPage() {
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{ platform?: string; title?: string; ts?: number }[]>([]);
-  type ScheduledItem = { platform?: string; title?: string; scheduledAt?: string };
+  type ScheduledItem = { _id?: string; id?: string; platform?: string; title?: string; scheduledAt?: string };
   const [scheduledNext, setScheduledNext] = useState<ScheduledItem[]>([]);
 
   useEffect(() => {
@@ -123,10 +125,26 @@ export default function DashboardPage() {
           <h3 className="card-title">📅 Upcoming Scheduled</h3>
           <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
             {scheduledNext.map((p, i) => (
-              <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', alignItems:'center', gap:8, padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
-                <div style={{opacity:0.7}}>{(p.platform||'').toUpperCase()}</div>
-                <div style={{opacity:0.6}}>{p.scheduledAt ? new Date(p.scheduledAt).toLocaleString() : ''}</div>
+                <div className="btn" style={{padding:'4px 8px'}}>{(p.platform||'').toUpperCase()}</div>
+                <div style={{opacity:0.7}}>{p.scheduledAt ? new Date(p.scheduledAt).toLocaleString() : ''}</div>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button className="btn" onClick={async()=>{
+                    const itemId = p._id || p.id;
+                    const pl = (p.platform || '').toLowerCase();
+                    if (!itemId || (pl !== 'instagram' && pl !== 'youtube')) return;
+                    const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform: pl, scope:'single', itemId }) });
+                    show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
+                  }}>🚀</button>
+                  <button className="btn" onClick={async()=>{
+                    const itemId = p._id || p.id;
+                    if (!itemId) return;
+                    const r = await fetch(API_ENDPOINTS.autopilotQueueRemove(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId, platform: p.platform }) });
+                    show(r.ok? 'Removed' : 'Remove failed', r.ok?'success':'error');
+                    if (r.ok) setScheduledNext(prev => prev.filter(x => (x._id||x.id) !== itemId));
+                  }}>🗑</button>
+                </div>
               </div>
             ))}
             {scheduledNext.length === 0 && <div style={{opacity:0.7}}>No upcoming scheduled items</div>}
