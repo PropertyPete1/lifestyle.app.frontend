@@ -1,4 +1,22 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
+const normalizeBaseUrl = (raw?: string): string => {
+  const fallback = 'http://localhost:10000';
+  if (!raw) return fallback;
+  // Take the first non-empty token if comma/space separated
+  let source = (raw.split(/[\s,]+/).filter(Boolean)[0] || '').trim();
+  if (!source) return fallback;
+  // Fix common mistakes like http// or https//
+  source = source.replace(/^http\/\//i, 'http://');
+  source = source.replace(/^https\/\//i, 'https://');
+  // If missing scheme, default to https
+  if (!/^https?:\/\//i.test(source)) {
+    source = `https://${source}`;
+  }
+  // Drop trailing slash
+  source = source.replace(/\/+$/, '');
+  return source;
+};
+
+export const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 const withBase = (path: string) => `${API_BASE_URL}${path}`;
 
