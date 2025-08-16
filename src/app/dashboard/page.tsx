@@ -14,7 +14,8 @@ export default function DashboardPage() {
   type Status = { running?: boolean; limits?: { hourlyLimit?: number; dailyLimit?: number } };
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [status, setStatus] = useState<Status>({});
-  const [chart, setChart] = useState<number[]>([]);
+  const [igChart, setIgChart] = useState<number[]>([]);
+  const [ytChart, setYtChart] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
@@ -23,18 +24,20 @@ export default function DashboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const [a, s, series, b] = await Promise.all([
+        const [a, s, igSeries, ytSeries, b] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.analyticsSeries(platform, 30), { cache: 'no-store' }).then(r => r.json()),
+          fetch(API_ENDPOINTS.analyticsSeries('instagram', 30), { cache: 'no-store' }).then(r => r.json()),
+          fetch(API_ENDPOINTS.analyticsSeries('youtube', 30), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({}))
         ]);
         setAnalytics(a || {});
         setStatus(s || {});
-        setChart((series?.postCounts || []) as number[]);
+        setIgChart((igSeries?.postCounts || []) as number[]);
+        setYtChart((ytSeries?.postCounts || []) as number[]);
         setBurst(b || {});
       } catch {
-        setAnalytics({}); setStatus({}); setChart([]); setBurst(null);
+        setAnalytics({}); setStatus({}); setIgChart([]); setYtChart([]); setBurst(null);
       } finally { setLoading(false); }
     })();
   }, [platform]);
@@ -61,9 +64,9 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="dashboard-card vintage-accent">
-          <h3 className="card-title">📈 Wave & Lines</h3>
+          <h3 className="card-title">📈 Activity Lines (IG & YT)</h3>
           <ChartWave />
-          <ChartLines igSeries={platform==='instagram'?chart:[]} ytSeries={platform==='youtube'?chart:[]} speedFactor={Math.max(0.5, Math.min(3, (chart.reduce((a,b)=>a+b,0)/(chart.length||1))/2))} />
+          <ChartLines igSeries={igChart} ytSeries={ytChart} speedFactor={Math.max(0.5, Math.min(3, ((igChart.reduce((a,b)=>a+b,0)/(igChart.length||1)) + (ytChart.reduce((a,b)=>a+b,0)/(ytChart.length||1)))/2))} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>
