@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<Status>({});
   const [chart, setChart] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +65,20 @@ export default function DashboardPage() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>
           <ActivityHeatmap />
+        </div>
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">⚡ Quick Actions</h3>
+          <div className="btn-grid">
+            <button className="btn btn-primary" disabled={posting} onClick={async ()=>{
+              try {
+                setPosting(true);
+                await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'next' }) });
+              } finally {
+                setPosting(false);
+              }
+            }}>🚀 Post Now ({platform})</button>
+            <a className="btn" href="/autopilot">Open AutoPilot</a>
+          </div>
         </div>
         {platform==='instagram' ? (
           <div className="dashboard-card vintage-accent">
