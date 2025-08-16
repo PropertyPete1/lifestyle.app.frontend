@@ -1,4 +1,0 @@
-.chart-container { position: relative; height: 100px; display:flex; align-items:flex-end; gap:10px; margin-top:1rem; }
-.chart-bar { flex:1; background: linear-gradient(180deg, rgba(0,200,255,0.6), rgba(0,200,255,0.05)); border-radius:6px 6px 0 0; transition: height .3s ease; }
-.chart-grid { position:absolute; inset:0; background: repeating-linear-gradient(to top, rgba(255,255,255,0.06), rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px); border-radius:8px; }
-

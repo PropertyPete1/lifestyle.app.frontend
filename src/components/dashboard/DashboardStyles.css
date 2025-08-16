@@ -1,7 +1,0 @@
-.metrics-row { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px; }
-.metrics-row .card { border-radius:14px; background: var(--card); border:1px solid var(--border); box-shadow: var(--shadow); padding:16px; }
-.metrics-row .card:hover { border-color: rgba(255,61,127,.25); }
-.wave-panel { background: var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; position:relative; overflow:hidden; }
-.particles { position:absolute; inset:0; pointer-events:none; background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 22px 22px; opacity:.25; }
-.heatmap-panel, .recent-panel { background: var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
-
