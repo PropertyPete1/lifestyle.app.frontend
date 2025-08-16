@@ -1,13 +1,30 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
 
 type Platform = 'instagram' | 'youtube';
+type QueueItemSummary = {
+  title?: string;
+  caption?: string;
+  videoId?: string;
+  _id?: string;
+  id?: string;
+  platform?: Platform | string;
+};
 
 export default function AutopilotPage() {
   const [active, setActive] = useState(false);
   const [platform, setPlatform] = useState<Platform>('instagram');
+  const [burstLoading, setBurstLoading] = useState(false);
+  const [burstStatus, setBurstStatus] = useState<{ enabled?: boolean; windowMinutes?: number; maxPerWindow?: number } | null>(null);
+  const [cfgWindowMinutes, setCfgWindowMinutes] = useState<number>(60);
+  const [cfgMaxPerWindow, setCfgMaxPerWindow] = useState<number>(6);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [diagSummary, setDiagSummary] = useState<string>('');
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueItems, setQueueItems] = useState<QueueItemSummary[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -19,6 +36,71 @@ export default function AutopilotPage() {
     setPlatform(p);
     if (typeof window !== 'undefined') localStorage.setItem('platform', p);
   };
+
+  const loadBurstStatus = async () => {
+    try {
+      setBurstLoading(true);
+      const res = await fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' });
+      const json = await res.json();
+      setBurstStatus(json || {});
+      if (typeof json?.windowMinutes === 'number') setCfgWindowMinutes(json.windowMinutes);
+      if (typeof json?.maxPerWindow === 'number') setCfgMaxPerWindow(json.maxPerWindow);
+    } catch {
+      setBurstStatus(null);
+    } finally {
+      setBurstLoading(false);
+    }
+  };
+
+  const setBurst = async (enabled: boolean) => {
+    try {
+      setBurstLoading(true);
+      await fetch(API_ENDPOINTS.burstPost(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled, platform }),
+      });
+      await loadBurstStatus();
+    } finally { setBurstLoading(false); }
+  };
+
+  const saveBurstConfig = async () => {
+    try {
+      setSavingConfig(true);
+      await fetch(API_ENDPOINTS.burstConfig(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ windowMinutes: cfgWindowMinutes, maxPerWindow: cfgMaxPerWindow, platform }),
+      });
+      await loadBurstStatus();
+    } finally { setSavingConfig(false); }
+  };
+
+  const runDiagnostics = async () => {
+    try {
+      setDiagRunning(true);
+      const res = await fetch(API_ENDPOINTS.diagReport(), { cache: 'no-store' });
+      const json = await res.json();
+      setDiagSummary(JSON.stringify(json)?.slice(0, 400));
+    } catch { setDiagSummary('Failed to run diagnostics'); }
+    finally { setDiagRunning(false); }
+  };
+
+  const loadQueue = useCallback(async () => {
+    try {
+      setQueueLoading(true);
+      const res = await fetch(API_ENDPOINTS.autopilotQueue(platform, 50), { cache: 'no-store' });
+      const json = await res.json();
+      setQueueItems((json?.items as QueueItemSummary[]) || []);
+    } catch { setQueueItems([]); }
+    finally { setQueueLoading(false); }
+  }, [platform]);
+
+  useEffect(() => {
+    // Initial loads when page opens or platform changes
+    loadBurstStatus();
+    loadQueue();
+  }, [loadQueue]);
   const toggle = () => {
     const loader = document.getElementById('autopilotLoader');
     const status = document.getElementById('autopilotStatus');
@@ -80,6 +162,54 @@ export default function AutopilotPage() {
             <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>✋ Manual Post</button>
             <button className="btn" onClick={async()=>{ await fetch(API_ENDPOINTS.schedulerAutofill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); }}>📅 Autofill</button>
             <a className="btn" href="/dashboard">← Back to Dashboard</a>
+          </div>
+        </div>
+
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">🌩️ Burst Controls</h3>
+          <div className="btn-grid" style={{ marginBottom: '1rem' }}>
+            <div className="btn">Status: {burstLoading ? 'Loading…' : (burstStatus?.enabled ? 'Active' : 'Inactive')}</div>
+            <button className="btn" disabled={burstLoading} onClick={()=>setBurst(true)}>Burst ON</button>
+            <button className="btn" disabled={burstLoading} onClick={()=>setBurst(false)}>Burst OFF</button>
+          </div>
+          <div className="btn-grid">
+            <label className="btn">
+              Window (min)
+              <input style={{ marginLeft: '0.5rem', width: '6rem' }} type="number" value={cfgWindowMinutes} onChange={(e)=>setCfgWindowMinutes(parseInt(e.target.value||'0',10))} />
+            </label>
+            <label className="btn">
+              Max / Window
+              <input style={{ marginLeft: '0.5rem', width: '6rem' }} type="number" value={cfgMaxPerWindow} onChange={(e)=>setCfgMaxPerWindow(parseInt(e.target.value||'0',10))} />
+            </label>
+            <button className="btn btn-primary" disabled={savingConfig} onClick={saveBurstConfig}>💾 Save Config</button>
+          </div>
+        </div>
+
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">🧪 Diagnostics</h3>
+          <div className="btn-grid">
+            <button className="btn" disabled={diagRunning} onClick={runDiagnostics}>{diagRunning ? 'Running…' : 'Run Diagnostics'}</button>
+            <div className="btn" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Last: {diagSummary || '—'}</div>
+          </div>
+        </div>
+
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">📋 Smart Queue</h3>
+          <div className="btn-grid" style={{ marginBottom: '1rem' }}>
+            <button className="btn" disabled={queueLoading} onClick={loadQueue}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
+            <div className="btn">Items: {queueItems.length}</div>
+          </div>
+          <div style={{ maxHeight: '260px', overflowY: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem' }}>
+            {queueItems.slice(0, 12).map((it, idx) => {
+              const title = it?.title || it?.caption || it?.videoId || it?._id || it?.id || `Item ${idx+1}`;
+              return (
+                <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ opacity: 0.9 }}>{idx+1}. {String(title)}</div>
+                  <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                </div>
+              );
+            })}
+            {queueItems.length === 0 && !queueLoading && <div style={{opacity:0.7}}>No items</div>}
           </div>
         </div>
       </div>
