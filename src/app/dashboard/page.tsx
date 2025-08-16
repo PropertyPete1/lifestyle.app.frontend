@@ -26,18 +26,21 @@ export default function DashboardPage() {
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{ platform?: string; title?: string; ts?: number }[]>([]);
+  type ScheduledItem = { platform?: string; title?: string; scheduledAt?: string };
+  const [scheduledNext, setScheduledNext] = useState<ScheduledItem[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const [a, s, igSeries, ytSeries, b, rp] = await Promise.all([
+        const [a, s, igSeries, ytSeries, b, rp, sched] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.analyticsSeries('instagram', 30), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.analyticsSeries('youtube', 30), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({})),
-          fetch(API_ENDPOINTS.activityRecentPosts(undefined, 5), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] }))
+          fetch(API_ENDPOINTS.activityRecentPosts(undefined, 5), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
+          fetch(API_ENDPOINTS.autopilotQueue(undefined, 5, 1, undefined, undefined, 'true'), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] }))
         ]);
         setAnalytics(a || {});
         setStatus(s || {});
@@ -46,6 +49,11 @@ export default function DashboardPage() {
         setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
         setBurst(b || {});
         setRecentPosts((rp?.items || []).slice(0,5));
+        const schedItems: ScheduledItem[] = (sched?.items || [])
+          .filter((x: ScheduledItem)=> x?.scheduledAt)
+          .sort((a: ScheduledItem,b: ScheduledItem)=> new Date(a.scheduledAt || '').getTime() - new Date(b.scheduledAt || '').getTime())
+          .slice(0,5);
+        setScheduledNext(schedItems);
       } catch {
         setAnalytics({}); setStatus({}); setIgChart([]); setYtChart([]); setBurst(null);
       } finally { setLoading(false); }
@@ -113,9 +121,18 @@ export default function DashboardPage() {
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📅 Upcoming Scheduled</h3>
-          <div className="btn-grid">
+          <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
+            {scheduledNext.map((p, i) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
+                <div style={{opacity:0.7}}>{(p.platform||'').toUpperCase()}</div>
+                <div style={{opacity:0.6}}>{p.scheduledAt ? new Date(p.scheduledAt).toLocaleString() : ''}</div>
+              </div>
+            ))}
+            {scheduledNext.length === 0 && <div style={{opacity:0.7}}>No upcoming scheduled items</div>}
+          </div>
+          <div className="btn-grid" style={{ marginTop: 8 }}>
             <a className="btn" href="/autopilot">Open Smart Queue →</a>
-            <div className="btn" style={{opacity:.7}}>Use Queue modal to view next scheduled items</div>
           </div>
         </div>
         <div className="dashboard-card vintage-accent">
