@@ -2,8 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
-import ChartWave from '@/components/ChartWave';
-import ChartLines from '@/components/ChartLines';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
 
 type Analytics = { instagram?: { followers?: number|string|null; engagement?: string|null; reach?: number|null }; youtube?: { subscribers?: number|string|null; watchTime?: string|null; views?: number|null } };
@@ -68,9 +66,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
         <div className="dashboard-card vintage-accent">
-          <h3 className="card-title">📈 Wave & Lines</h3>
-          <ChartWave />
-          <ChartLines points={chart} />
+          <h3 className="card-title">⭐ Optimal Times ({platform})</h3>
+          <OptimalTimes platform={platform} />
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📆 Activity Series ({platform})</h3>
@@ -125,6 +122,29 @@ export default function AnalyticsPage() {
         </div>
       </div>
       {loading && <div style={{opacity:.7}}>Loading…</div>}
+    </div>
+  );
+}
+
+function OptimalTimes({ platform }: { platform: 'instagram'|'youtube' }) {
+  const [best, setBest] = useState<{ day: string; hour: string; count: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(API_ENDPOINTS.heatmapOptimal(platform), { cache: 'no-store' });
+        const json = await res.json();
+        setBest(json?.best || []);
+      } finally { setLoading(false); }
+    })();
+  }, [platform]);
+  return (
+    <div className="btn-grid">
+      {best.map((b, i) => (
+        <div key={i} className="btn">{i+1}. {b.day} at {b.hour} — {b.count}</div>
+      ))}
+      {best.length === 0 && !loading && <div style={{opacity:0.7}}>No data</div>}
     </div>
   );
 }
