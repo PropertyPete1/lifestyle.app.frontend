@@ -15,24 +15,34 @@ export default function AnalyticsPage() {
   const [igFeed, setIgFeed] = useState<ActivityItem[]>([]);
   const [ytFeed, setYtFeed] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [platform, setPlatform] = useState<'instagram'|'youtube'>('instagram');
+  const [series, setSeries] = useState<{ dates: string[]; postCounts: number[]; likeCounts: number[]; commentCounts: number[] }>({ dates: [], postCounts: [], likeCounts: [], commentCounts: [] });
+  const [perHour, setPerHour] = useState<number[]>(Array.from({length:24},()=>0));
+  const [perWeekday, setPerWeekday] = useState<number[]>(Array.from({length:7},()=>0));
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const [a, c, ig, yt] = await Promise.all([
+        const [a, c, ig, yt, s, h, w] = await Promise.all([
           fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.chartStatus(), { cache: 'no-store' }).then(r => r.json()),
           fetch(API_ENDPOINTS.activityFeed('instagram', 10), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
           fetch(API_ENDPOINTS.activityFeed('youtube', 10), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
+          fetch(API_ENDPOINTS.analyticsSeries(platform, 30), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ dates:[], postCounts:[], likeCounts:[], commentCounts:[] })),
+          fetch(API_ENDPOINTS.analyticsPostsPerHour(platform), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ hours: Array.from({length:24},()=>0) })),
+          fetch(API_ENDPOINTS.analyticsPostsPerWeekday(platform), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ weekdays: Array.from({length:7},()=>0) })),
         ]);
         setAnalytics(a || {});
         setChart((c?.series || c?.data || []) as number[]);
         setIgFeed((ig?.items as ActivityItem[]) || []);
         setYtFeed((yt?.items as ActivityItem[]) || []);
+        setSeries(s || { dates: [], postCounts: [], likeCounts: [], commentCounts: [] });
+        setPerHour(h?.hours || Array.from({length:24},()=>0));
+        setPerWeekday(w?.weekdays || Array.from({length:7},()=>0));
       } finally { setLoading(false); }
     })();
-  }, []);
+  }, [platform]);
 
   return (
     <div>
@@ -41,6 +51,13 @@ export default function AnalyticsPage() {
         <p className="page-subtitle">Insights and performance metrics</p>
       </div>
       <div className="dashboard-grid">
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">🎯 Platform</h3>
+          <div className="btn-grid">
+            <button className={`btn btn-toggle ${platform==='instagram'?'active':''}`} onClick={()=>setPlatform('instagram')}>📷 Instagram</button>
+            <button className={`btn btn-toggle ${platform==='youtube'?'active':''}`} onClick={()=>setPlatform('youtube')}>📺 YouTube</button>
+          </div>
+        </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📊 Overview</h3>
           <div className="btn-grid">
@@ -54,6 +71,27 @@ export default function AnalyticsPage() {
           <h3 className="card-title">📈 Wave & Lines</h3>
           <ChartWave />
           <ChartLines points={chart} />
+        </div>
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">📆 Activity Series ({platform})</h3>
+          <div className="btn-grid">
+            <div className="btn">Days: {series.dates.length}</div>
+            <div className="btn">Posts Sum: {series.postCounts.reduce((a,b)=>a+b,0)}</div>
+            <div className="btn">Likes Sum: {series.likeCounts.reduce((a,b)=>a+b,0)}</div>
+            <div className="btn">Comments Sum: {series.commentCounts.reduce((a,b)=>a+b,0)}</div>
+          </div>
+        </div>
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">🕒 Posts by Hour ({platform})</h3>
+          <div className="btn-grid" style={{ flexWrap:'wrap', gap:6 }}>
+            {perHour.map((v,i)=>(<div key={i} className="btn" style={{ minWidth: 64 }}>h{i}: {v}</div>))}
+          </div>
+        </div>
+        <div className="dashboard-card vintage-accent">
+          <h3 className="card-title">📅 Posts by Weekday ({platform})</h3>
+          <div className="btn-grid">
+            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>(<div key={i} className="btn">{d}: {perWeekday[i]}</div>))}
+          </div>
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">🔥 Activity Heatmap</h3>

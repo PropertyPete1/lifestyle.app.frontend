@@ -47,6 +47,9 @@ export const API_ENDPOINTS = {
     withBase(`/api/activity/feed${platform ? `?platform=${platform}&limit=${limit}` : `?limit=${limit}`}`),
 
   analytics:          () => withBase('/api/analytics'),
+  analyticsSeries:    (platform?: string, days = 30) => withBase(`/api/analytics/series?days=${days}${platform?`&platform=${encodeURIComponent(platform)}`:''}`),
+  analyticsPostsPerHour: (platform?: string) => withBase(`/api/analytics/posts-per-hour${platform?`?platform=${encodeURIComponent(platform)}`:''}`),
+  analyticsPostsPerWeekday: (platform?: string) => withBase(`/api/analytics/posts-per-weekday${platform?`?platform=${encodeURIComponent(platform)}`:''}`),
   instagramAnalytics: () => withBase('/api/instagram/analytics'),
   youtubeAnalytics:   () => withBase('/api/youtube/analytics'),
 
