@@ -1,0 +1,3 @@
+.heatmap { display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; }
+.heatmap .cell { width:100%; padding-bottom:100%; background: rgba(255,255,255,0.06); border-radius:6px; }
+

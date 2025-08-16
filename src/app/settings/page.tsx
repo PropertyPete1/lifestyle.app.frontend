@@ -1,6 +1,11 @@
 // TODO: Replace with the exact code you pasted previously. This placeholder keeps the route working.
 'use client';
 
+import '../globals.css';
+import '@/components/dashboard/DashboardStyles.css';
+import '@/components/ChartWave.css';
+import '@/components/ChartLines.css';
+import '@/components/ActivityHeatmap.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
 import { toast } from '@/components/NotificationSystem';
@@ -201,7 +206,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="container">
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 14 }}>
         <h2 style={{ margin: 0 }}>Settings</h2>
         <a href="/dashboard" style={{ padding:'8px 12px', border:'1px solid rgba(255,255,255,.15)', borderRadius:8 }}>← Back</a>

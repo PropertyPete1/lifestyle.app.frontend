@@ -1,5 +1,10 @@
 'use client';
 
+import '../globals.css';
+import '@/components/dashboard/DashboardStyles.css';
+import '@/components/ChartWave.css';
+import '@/components/ChartLines.css';
+import '@/components/ActivityHeatmap.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/utils/api';
@@ -204,7 +209,7 @@ export default function AutopilotDashboard() {
   const minLikes = settings?.minimumIGLikesToRepost ?? settings?.minViews ?? 0;
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="container">
       {/* header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 18 }}>
         <div style={{ display:'flex', gap: 8 }}>

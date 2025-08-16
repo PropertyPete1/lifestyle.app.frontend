@@ -1,5 +1,10 @@
 'use client';
 
+import '../globals.css';
+import '@/components/dashboard/DashboardStyles.css';
+import '@/components/ChartWave.css';
+import '@/components/ChartLines.css';
+import '@/components/ActivityHeatmap.css';
 import React, { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/utils/api';
 import ChartWave from '@/components/ChartWave';
@@ -119,9 +124,9 @@ export default function DashboardPage() {
   const views = statsYT?.views ?? '';
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className="container">
       {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 }}>
+      <div className="toolbar" style={{ justifyContent:'space-between', marginBottom: 20 }}>
         <div style={{ display:'flex', gap:12 }}>
           <button onClick={() => setPlatform('instagram')} style={{
             padding:'10px 14px', borderRadius:8, border:'1px solid rgba(255,255,255,0.15)',
@@ -146,14 +151,14 @@ export default function DashboardPage() {
 
       {/* Metric tiles */}
       {platform==='instagram' ? (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }}>
+        <div className="metrics-row">
           <Tile title="👥 Followers" value={followers} sub="Connected / Not Connected" />
           <Tile title="❤️ Engagement Rate" value={engagement} sub="↗ +0.8% from last post" />
           <Tile title="📊 Reach" value={reach} sub="↗ +12.4% today" />
           <Tile title="Auto-Post Status" value={`${status?.limits?.dailyLimit ?? ''}/day`} sub={`Next post at ${settings?.postTime ?? '--:--'} CT (delay: ${settings?.repostDelay ?? 1}d)`} pill={status?.running ? 'Active' : 'Inactive'} />
         </div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }}>
+        <div className="metrics-row">
           <Tile title="📺 Subscribers" value={subs} sub="Connected / Not Connected" />
           <Tile title="⏱️ Watch Time" value={watchTime} sub="↗ +15.7% hours this week" />
           <Tile title="👁️ Views" value={views} sub="↗ +8.3% this week" />
@@ -169,20 +174,21 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts */}
-      <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:16, marginBottom:16 }}>
+      <div className="wave-panel">
         <ChartWave />
         <ChartLines points={chart || []} />
+        <div className="particles" />
       </div>
 
       {/* Heatmap */}
-      <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:16, marginBottom:16 }}>
+      <div className="heatmap-panel">
         <h3 style={{ marginTop:0 }}>Activity Heatmap</h3>
         <ActivityHeatmap />
       </div>
 
       {/* Recent */}
       {showRecent && (
-        <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:16 }}>
+        <div className="recent-panel">
           <h3 style={{ marginTop:0 }}>Recent Activity</h3>
           <RecentAutoPilotPostsWrapper platform={platform} />
         </div>
@@ -190,10 +196,8 @@ export default function DashboardPage() {
 
       {/* Smart Queue Drawer */}
       {drawerOpen && (
-        <div style={{
-          position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', justifyContent:'flex-end', zIndex:1000
-        }}>
-          <div style={{ width:'420px', height:'100%', background:'#0b1220', borderLeft:'1px solid rgba(255,255,255,0.08)', padding:16, overflow:'auto' }}>
+        <div className="drawer">
+          <div className="drawer-open">
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
               <h3 style={{ margin:0 }}>Smart Autopilot Queue</h3>
               <button onClick={()=>setDrawerOpen(false)} style={{ background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8, padding:'6px 10px' }}>×</button>
