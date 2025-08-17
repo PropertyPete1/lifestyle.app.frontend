@@ -3,6 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/utils/api';
+import { displayIso, formatLocal, type QueueItem } from '@/lib/time';
 import { useToast } from '@/components/Toast';
 
 type Platform = 'instagram' | 'youtube';
@@ -273,14 +274,32 @@ function AutopilotPageInner() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem' }}>
                 <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
-                  {queueItems.map((it, idx) => {
+                  {queueItems
+                    .sort((a,b)=>{
+                      const ai = displayIso(a as unknown as QueueItem);
+                      const bi = displayIso(b as unknown as QueueItem);
+                      const at = ai ? new Date(ai).getTime() : 0;
+                      const bt = bi ? new Date(bi).getTime() : 0;
+                      return at - bt;
+                    })
+                    .map((it, idx) => {
                     const title = it?.title || it?.caption || it?.videoId || it?._id || it?.id || `Item ${idx+1}`;
                     const isSel = (selectedItem && (selectedItem._id||selectedItem.id||selectedItem.videoId)) === (it._id||it.id||it.videoId);
                     return (
                       <div key={idx} onClick={()=>setSelectedItem(it)} style={{ padding:'0.6rem 0.5rem', borderBottom:'1px solid rgba(255,255,255,0.06)', background: isSel? 'rgba(255,255,255,0.06)' : 'transparent', cursor:'pointer', borderRadius:6 }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                          <div style={{ opacity:0.9 }}>{idx+1 + (page-1)*50}. {String(title)}</div>
-                          <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                          <div style={{ opacity:0.9 }}>
+                            {idx+1 + (page-1)*50}. {String(title)}{' '}
+                            {String((it as any)?.status||'')==='verifying' && (
+                              <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
+                            )}
+                          </div>
+                          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                            <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
+                            <div style={{ fontSize:'0.8rem', opacity:0.6 }}>
+                              {(() => { const iso = displayIso(it as unknown as QueueItem); return iso ? formatLocal(iso) : ''; })()}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );

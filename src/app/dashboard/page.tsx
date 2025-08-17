@@ -13,6 +13,7 @@ const AutopilotSwitch = dynamic(() => import('@/components/AutopilotSwitch'), { 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import tz from 'dayjs/plugin/timezone';
+import { displayIso, type QueueItem } from '@/lib/time';
 import { filterVerifiedRecent } from "../../utils/recentFilter";
 try { dayjs.extend(utc); } catch {}
 try { dayjs.extend(tz); } catch {}
@@ -62,11 +63,15 @@ export default function DashboardPage() {
       setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
       setBurst(b || {});
       setRecentPosts(filterVerifiedRecent(rp?.items || []).slice(0,5));
-      const allowed: Array<string> = ['queued', 'scheduled', 'publishing', 'posting'];
+      const allowed: Array<string> = ['queued', 'scheduled', 'publishing', 'posting', 'verifying'];
       const schedItems: ScheduledItem[] = (sched?.items || [])
         .filter((x: any) => allowed.includes(String((x as any)?.status || '').toLowerCase()))
-        .filter((x: ScheduledItem)=> x?.scheduledAt)
-        .sort((a: ScheduledItem,b: ScheduledItem)=> new Date(a.scheduledAt || '').getTime() - new Date(b.scheduledAt || '').getTime())
+        .filter((x: ScheduledItem)=> (x as any)?.scheduledAt)
+        .sort((a: any,b: any)=>{
+          const ai = displayIso(a as unknown as QueueItem) || a?.scheduledAt;
+          const bi = displayIso(b as unknown as QueueItem) || b?.scheduledAt;
+          return new Date(ai||'').getTime() - new Date(bi||'').getTime();
+        })
         .slice(0,5);
       setScheduledNext(schedItems);
     } catch {
@@ -149,8 +154,11 @@ export default function DashboardPage() {
               <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', alignItems:'center', gap:8, padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
                 <div className="btn" style={{padding:'4px 8px'}}>{(p.platform||'').toUpperCase()}</div>
-                <div style={{opacity:0.7}}>{p.scheduledAt ? prettyCT(p.scheduledAt) : ''}</div>
+                <div style={{opacity:0.7}}>{(()=>{ const iso = displayIso(p as unknown as any); return iso ? prettyCT(iso) : (p.scheduledAt?prettyCT(p.scheduledAt):''); })()}</div>
                 <div style={{ display:'flex', gap:6 }}>
+                  {String((p as any)?.status||'')==='verifying' && (
+                    <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
+                  )}
                   <button className="btn" onClick={async()=>{
                     const itemId = p._id || p.id;
                     const pl = (p.platform || '').toLowerCase();
@@ -198,10 +206,10 @@ export default function DashboardPage() {
             <button className="btn btn-primary" disabled={posting} onClick={async ()=>{
               try {
                 setPosting(true);
-                await Promise.all([
-                  fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'instagram', scope:'next' }) }),
-                  fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'youtube', scope:'next' }) })
-                ]);
+                const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'both', scope:'next' }) });
+                let summary = 'Done';
+                try { const json = await r.json(); summary = JSON.stringify(json); } catch {}
+                show(r.ok ? `Post Now: ${summary}` : 'Post Now failed', r.ok?'success':'error');
                 await loadDashboardData();
               } finally {
                 setPosting(false);
