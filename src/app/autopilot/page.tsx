@@ -276,8 +276,8 @@ function AutopilotPageInner() {
                 <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
                   {queueItems
                     .sort((a,b)=>{
-                      const ai = displayIso(a as unknown as QueueItem);
-                      const bi = displayIso(b as unknown as QueueItem);
+                      const ai = displayIso((a as unknown as QueueItem));
+                      const bi = displayIso((b as unknown as QueueItem));
                       const at = ai ? new Date(ai).getTime() : 0;
                       const bt = bi ? new Date(bi).getTime() : 0;
                       return at - bt;
@@ -290,14 +290,14 @@ function AutopilotPageInner() {
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <div style={{ opacity:0.9 }}>
                             {idx+1 + (page-1)*50}. {String(title)}{' '}
-                            {String((it as any)?.status||'')==='verifying' && (
+                            {String((it as unknown as { status?: string })?.status||'')==='verifying' && (
                               <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
                             )}
                           </div>
                           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                             <div style={{ fontSize:'0.8rem', opacity:0.6 }}>{it?.platform || platform}</div>
                             <div style={{ fontSize:'0.8rem', opacity:0.6 }}>
-                              {(() => { const iso = displayIso(it as unknown as QueueItem); return iso ? formatLocal(iso) : ''; })()}
+                              {(() => { const iso = displayIso((it as unknown as QueueItem)); return iso ? formatLocal(iso) : ''; })()}
                             </div>
                           </div>
                         </div>

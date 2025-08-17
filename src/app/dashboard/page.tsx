@@ -154,9 +154,9 @@ export default function DashboardPage() {
               <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', alignItems:'center', gap:8, padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
                 <div className="btn" style={{padding:'4px 8px'}}>{(p.platform||'').toUpperCase()}</div>
-                <div style={{opacity:0.7}}>{(()=>{ const iso = displayIso(p as unknown as any); return iso ? prettyCT(iso) : (p.scheduledAt?prettyCT(p.scheduledAt):''); })()}</div>
+                <div style={{opacity:0.7}}>{(()=>{ const iso = displayIso((p as unknown as QueueItem)); return iso ? prettyCT(iso) : (p.scheduledAt?prettyCT(p.scheduledAt):''); })()}</div>
                 <div style={{ display:'flex', gap:6 }}>
-                  {String((p as any)?.status||'')==='verifying' && (
+                  {String((p as unknown as { status?: string })?.status||'')==='verifying' && (
                     <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
                   )}
                   <button className="btn" onClick={async()=>{

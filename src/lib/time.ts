@@ -20,7 +20,8 @@ export type QueueItem = {
 };
 
 export const displayIso = (q: QueueItem): string | undefined =>
-  (q?.meta as any)?.originalScheduledAt ?? q?.scheduledAt;
+  (q?.meta && typeof q.meta.originalScheduledAt === 'string' && q.meta.originalScheduledAt)
+    || q?.scheduledAt;
 
 export const formatLocal = (iso?: string): string => {
   if (!iso) return '—';
