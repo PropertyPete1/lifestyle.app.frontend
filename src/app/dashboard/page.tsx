@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import ChartWave from '@/components/ChartWave';
@@ -8,8 +8,14 @@ import ChartLines from '@/components/ChartLines';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
 import { API_ENDPOINTS } from '@/utils/api';
 import dynamic from 'next/dynamic';
-
 const AutopilotSwitch = dynamic(() => import('@/components/AutopilotSwitch'), { ssr: false });
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import tz from 'dayjs/plugin/timezone';
+try { dayjs.extend(utc); } catch {}
+try { dayjs.extend(tz); } catch {}
+const CT = 'America/Chicago';
+const prettyCT = (iso?: string) => (iso ? dayjs.utc(iso).tz(CT).format('MMM D, h:mm A z') : '');
 
 type Platform = 'instagram' | 'youtube';
 
@@ -31,39 +37,44 @@ export default function DashboardPage() {
   const [posting, setPosting] = useState(false);
   const [burst, setBurst] = useState<{ enabled?: boolean } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{ platform?: string; title?: string; ts?: number }[]>([]);
-  type ScheduledItem = { _id?: string; id?: string; platform?: string; title?: string; scheduledAt?: string };
+  type ScheduledItem = { _id?: string; id?: string; platform?: string; title?: string; scheduledAt?: string; status?: string };
   const [scheduledNext, setScheduledNext] = useState<ScheduledItem[]>([]);
 
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const noCache: RequestInit = { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } } as any;
+      const [a, s, igSeries, ytSeries, b, rp, sched] = await Promise.all([
+        fetch(API_ENDPOINTS.analytics(), noCache).then(r => r.json()),
+        fetch(API_ENDPOINTS.autopilotStatus(), noCache).then(r => r.json()),
+        fetch(API_ENDPOINTS.analyticsSeries('instagram', 30), noCache).then(r => r.json()),
+        fetch(API_ENDPOINTS.analyticsSeries('youtube', 30), noCache).then(r => r.json()),
+        fetch(API_ENDPOINTS.burstGet(), noCache).then(r => r.json()).catch(()=>({})),
+        fetch(API_ENDPOINTS.activityRecentPosts(undefined, 5), noCache).then(r => r.json()).catch(()=>({ items: [] })),
+        fetch(API_ENDPOINTS.autopilotQueue(undefined, 10, 1, undefined, undefined, 'true'), noCache).then(r => r.json()).catch(()=>({ items: [] }))
+      ]);
+      setAnalytics(a || {});
+      setStatus(s || {});
+      setIgChart((igSeries?.postCounts || []) as number[]);
+      setYtChart((ytSeries?.postCounts || []) as number[]);
+      setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
+      setBurst(b || {});
+      setRecentPosts((rp?.items || []).slice(0,5));
+      const allowed: Array<string> = ['queued', 'scheduled', 'publishing', 'posting'];
+      const schedItems: ScheduledItem[] = (sched?.items || [])
+        .filter((x: any) => allowed.includes(String((x as any)?.status || '').toLowerCase()))
+        .filter((x: ScheduledItem)=> x?.scheduledAt)
+        .sort((a: ScheduledItem,b: ScheduledItem)=> new Date(a.scheduledAt || '').getTime() - new Date(b.scheduledAt || '').getTime())
+        .slice(0,5);
+      setScheduledNext(schedItems);
+    } catch {
+      setAnalytics({}); setStatus({}); setIgChart([]); setYtChart([]); setBurst(null);
+    } finally { setLoading(false); }
+  }, []);
+
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const [a, s, igSeries, ytSeries, b, rp, sched] = await Promise.all([
-          fetch(API_ENDPOINTS.analytics(), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.autopilotStatus(), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.analyticsSeries('instagram', 30), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.analyticsSeries('youtube', 30), { cache: 'no-store' }).then(r => r.json()),
-          fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' }).then(r => r.json()).catch(()=>({})),
-          fetch(API_ENDPOINTS.activityRecentPosts(undefined, 5), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] })),
-          fetch(API_ENDPOINTS.autopilotQueue(undefined, 5, 1, undefined, undefined, 'true'), { cache: 'no-store' }).then(r => r.json()).catch(()=>({ items: [] }))
-        ]);
-        setAnalytics(a || {});
-        setStatus(s || {});
-        setIgChart((igSeries?.postCounts || []) as number[]);
-        setYtChart((ytSeries?.postCounts || []) as number[]);
-        setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
-        setBurst(b || {});
-        setRecentPosts((rp?.items || []).slice(0,5));
-        const schedItems: ScheduledItem[] = (sched?.items || [])
-          .filter((x: ScheduledItem)=> x?.scheduledAt)
-          .sort((a: ScheduledItem,b: ScheduledItem)=> new Date(a.scheduledAt || '').getTime() - new Date(b.scheduledAt || '').getTime())
-          .slice(0,5);
-        setScheduledNext(schedItems);
-      } catch {
-        setAnalytics({}); setStatus({}); setIgChart([]); setYtChart([]); setBurst(null);
-      } finally { setLoading(false); }
-    })();
-  }, [platform]);
+    void loadDashboardData();
+  }, [platform, loadDashboardData]);
 
   const followers = analytics?.instagram?.followers ?? '';
   const engagement = analytics?.instagram?.engagement ?? '';
@@ -108,7 +119,6 @@ export default function DashboardPage() {
             onToggleYT={(v)=> setShowYT(v)}
             onToggleSmoothing={(v)=> setSmooth(v)}
             onClickDate={(date)=>{
-              // deep-link to Autopilot with date & platform preserved
               const params = new URLSearchParams();
               if (date) params.set('date', date);
               params.set('platform', platform);
@@ -137,7 +147,7 @@ export default function DashboardPage() {
               <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', alignItems:'center', gap:8, padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
                 <div className="btn" style={{padding:'4px 8px'}}>{(p.platform||'').toUpperCase()}</div>
-                <div style={{opacity:0.7}}>{p.scheduledAt ? new Date(p.scheduledAt).toLocaleString() : ''}</div>
+                <div style={{opacity:0.7}}>{p.scheduledAt ? prettyCT(p.scheduledAt) : ''}</div>
                 <div style={{ display:'flex', gap:6 }}>
                   <button className="btn" onClick={async()=>{
                     const itemId = p._id || p.id;
@@ -145,6 +155,7 @@ export default function DashboardPage() {
                     if (!itemId || (pl !== 'instagram' && pl !== 'youtube')) return;
                     const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform: pl, scope:'single', itemId }) });
                     show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
+                    if (r.ok) await loadDashboardData();
                   }}>🚀</button>
                   <button className="btn" onClick={async()=>{
                     const itemId = p._id || p.id;
@@ -169,7 +180,7 @@ export default function DashboardPage() {
               <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{opacity:0.9}}>{p.title || 'Post'}</div>
                 <div style={{opacity:0.7}}>{p.platform?.toUpperCase()}</div>
-                <div style={{opacity:0.6}}>{p.ts ? new Date(p.ts).toLocaleString() : ''}</div>
+                <div style={{opacity:0.6}}>{p.ts ? prettyCT(new Date(p.ts).toISOString()) : ''}</div>
               </div>
             ))}
             {recentPosts.length === 0 && <div style={{opacity:0.7}}>No recent posts</div>}
@@ -189,6 +200,7 @@ export default function DashboardPage() {
                   fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'instagram', scope:'next' }) }),
                   fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'youtube', scope:'next' }) })
                 ]);
+                await loadDashboardData();
               } finally {
                 setPosting(false);
               }
