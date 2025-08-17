@@ -7,6 +7,9 @@ import ChartWave from '@/components/ChartWave';
 import ChartLines from '@/components/ChartLines';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
 import { API_ENDPOINTS } from '@/utils/api';
+import dynamic from 'next/dynamic';
+
+const AutopilotSwitch = dynamic(() => import('@/components/AutopilotSwitch'), { ssr: false });
 
 type Platform = 'instagram' | 'youtube';
 
@@ -84,6 +87,9 @@ export default function DashboardPage() {
           <div className="btn-grid">
             <button className={`btn btn-toggle ${platform==='instagram'?'active':''}`} onClick={() => setPlatform('instagram')}>📷 Instagram</button>
             <button className={`btn btn-toggle ${platform==='youtube'?'active':''}`} onClick={() => setPlatform('youtube')}>📺 YouTube</button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <AutopilotSwitch />
           </div>
         </div>
         <div className="dashboard-card vintage-accent">
