@@ -13,6 +13,7 @@ const AutopilotSwitch = dynamic(() => import('@/components/AutopilotSwitch'), { 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import tz from 'dayjs/plugin/timezone';
+import { filterVerifiedRecent } from "../../utils/recentFilter";
 try { dayjs.extend(utc); } catch {}
 try { dayjs.extend(tz); } catch {}
 const CT = 'America/Chicago';
@@ -60,7 +61,7 @@ export default function DashboardPage() {
       setYtChart((ytSeries?.postCounts || []) as number[]);
       setSeriesDates((igSeries?.dates || ytSeries?.dates || []) as string[]);
       setBurst(b || {});
-      setRecentPosts((rp?.items || []).slice(0,5));
+      setRecentPosts(filterVerifiedRecent(rp?.items || []).slice(0,5));
       const allowed: Array<string> = ['queued', 'scheduled', 'publishing', 'posting'];
       const schedItems: ScheduledItem[] = (sched?.items || [])
         .filter((x: any) => allowed.includes(String((x as any)?.status || '').toLowerCase()))
