@@ -78,3 +78,28 @@ export const API_ENDPOINTS = {
   heatmapOptimal:     (platform?: string) => withBase(`/api/heatmap/optimal-times${platform?`?platform=${encodeURIComponent(platform)}`:''}`),
 };
 
+// Lightweight GET helper
+async function get(path: string) {
+  const url = `${API_BASE_URL}${path}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
+  return res.json();
+}
+
+// Back-compat helpers used by dashboard/components
+export function diagScheduleStatus() {
+  return get('/api/diag/schedule/status');
+}
+
+export async function upcomingBoth(limit = 50) {
+  const [ig, yt] = await Promise.all([
+    get(`/api/autopilot/queue?platform=instagram&scheduled=true&limit=${limit}`),
+    get(`/api/autopilot/queue?platform=youtube&scheduled=true&limit=${limit}`),
+  ]);
+  return { ig, yt };
+}
+
+// Older imports still referenced
+export const autopilotQueueRemoveEndpoint = () => API_ENDPOINTS.autopilotQueueRemove();
+export const autopilotQueuePrioritizeEndpoint = () => API_ENDPOINTS.autopilotQueueRemove();
+
