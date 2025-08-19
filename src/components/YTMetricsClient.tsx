@@ -26,9 +26,10 @@ export default function YTMetricsClient({ windowDays = 30 }: { windowDays?: numb
         if (!alive) return;
         setData(j);
         setErr(j.ok ? null : (j.error || j.note || "Failed to load"));
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        setErr(e?.message || "Failed to load");
+        const msg = e instanceof Error ? e.message : 'Failed to load';
+        setErr(msg);
       }
     })();
     return () => { alive = false; };

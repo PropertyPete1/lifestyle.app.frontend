@@ -4,15 +4,25 @@ import * as React from "react";
 import { diagScheduleStatus, upcomingBoth } from "@/utils/api";
 import { fmtLocalLabel, isExactSlot, isFuture } from "@/lib/time";
 
-type QItem = {
+type Platform = "instagram" | "youtube" | string;
+
+export type QItem = {
   _id?: string;
   id?: string;
-  platform: "instagram" | "youtube" | string;
+  platform: Platform;
   scheduledAt?: string;
   source?: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
   title?: string;
 };
+
+type ItemsShape = { items?: QItem[] } | QItem[];
+type BothResp = { ig?: ItemsShape; yt?: ItemsShape };
+
+function pick(listOrObj: ItemsShape | undefined): QItem[] {
+  if (!listOrObj) return [];
+  return Array.isArray(listOrObj) ? listOrObj : (listOrObj.items ?? []);
+}
 
 type SchedResp = {
   tz: string;
@@ -32,24 +42,24 @@ export default function UpcomingScheduleClient() {
     (async () => {
       try {
         setLoading(true);
-        const [sched, both] = await Promise.all([
+        const [sched, bothRaw] = await Promise.all([
           diagScheduleStatus(),
           upcomingBoth(50),
         ]);
+        const both = bothRaw as unknown as BothResp;
 
-        const ig: QItem[] = (both as any)?.ig?.items || (both as any)?.ig || [];
-        const yt: QItem[] = (both as any)?.yt?.items || (both as any)?.yt || [];
+        const ig = pick(both.ig);
+        const yt = pick(both.yt);
 
         const list = [...ig, ...yt]
-          .filter(Boolean)
-          .filter((it) => it?.scheduledAt)
+          .filter((it) => it && it.scheduledAt)
           .filter((it) => isExactSlot(String(it.scheduledAt)))
           .filter((it) => isFuture(String(it.scheduledAt)));
 
         const seen = new Set<string>();
         const deduped: QItem[] = [];
         for (const it of list) {
-          const key = `${(it.platform || "").toString().toLowerCase()}|${new Date(String(it.scheduledAt)).toISOString().slice(0,16)}`;
+          const key = `${String(it.platform).toLowerCase()}|${new Date(String(it.scheduledAt)).toISOString().slice(0,16)}`;
           if (!seen.has(key)) {
             seen.add(key);
             deduped.push(it);
@@ -58,19 +68,18 @@ export default function UpcomingScheduleClient() {
         deduped.sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)));
 
         if (!alive) return;
-        setStatus(sched);
+        setStatus(sched as SchedResp);
         setItems(deduped);
         setError(null);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        setError(e?.message || "Failed to load schedule");
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg || "Failed to load schedule");
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
 
   if (loading) return <div className="text-sm opacity-70">Loading schedule…</div>;
@@ -99,3 +108,5 @@ export default function UpcomingScheduleClient() {
     </div>
   );
 }
+
+
