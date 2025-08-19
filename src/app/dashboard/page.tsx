@@ -15,6 +15,7 @@ import utc from 'dayjs/plugin/utc';
 import tz from 'dayjs/plugin/timezone';
 import { displayIso, type QueueItem } from '@/lib/time';
 import { filterVerifiedRecent } from "../../utils/recentFilter";
+import SchedulePanel from '@/components/SchedulePanel';
 try { dayjs.extend(utc); } catch {}
 try { dayjs.extend(tz); } catch {}
 const CT = 'America/Chicago';
@@ -149,35 +150,8 @@ export default function DashboardPage() {
         </div>
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📅 Upcoming Scheduled</h3>
-          <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'0.5rem' }}>
-            {scheduledNext.map((p, i) => (
-              <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', alignItems:'center', gap:8, padding:'0.4rem 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{opacity:0.9}}>{p.title || 'Queued Item'}</div>
-                <div className="btn" style={{padding:'4px 8px'}}>{(p.platform||'').toUpperCase()}</div>
-                <div style={{opacity:0.7}}>{(()=>{ const iso = displayIso((p as unknown as QueueItem)); return iso ? prettyCT(iso) : (p.scheduledAt?prettyCT(p.scheduledAt):''); })()}</div>
-                <div style={{ display:'flex', gap:6 }}>
-                  {String((p as unknown as { status?: string })?.status||'')==='verifying' && (
-                    <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
-                  )}
-                  <button className="btn" onClick={async()=>{
-                    const itemId = p._id || p.id;
-                    const pl = (p.platform || '').toLowerCase();
-                    if (!itemId || (pl !== 'instagram' && pl !== 'youtube')) return;
-                    const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform: pl, scope:'single', itemId }) });
-                    show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
-                    if (r.ok) await loadDashboardData();
-                  }}>🚀</button>
-                  <button className="btn" onClick={async()=>{
-                    const itemId = p._id || p.id;
-                    if (!itemId) return;
-                    const r = await fetch(API_ENDPOINTS.autopilotQueueRemove(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId, platform: p.platform }) });
-                    show(r.ok? 'Removed' : 'Remove failed', r.ok?'success':'error');
-                    if (r.ok) setScheduledNext(prev => prev.filter(x => (x._id||x.id) !== itemId));
-                  }}>🗑</button>
-                </div>
-              </div>
-            ))}
-            {scheduledNext.length === 0 && <div style={{opacity:0.7}}>No upcoming scheduled items</div>}
+          <div style={{ padding: '0.5rem' }}>
+            <SchedulePanel />
           </div>
           <div className="btn-grid" style={{ marginTop: 8 }}>
             <a className="btn" href="/autopilot">Open Smart Queue →</a>
