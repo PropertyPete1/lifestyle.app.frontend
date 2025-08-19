@@ -1,35 +1,24 @@
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import tz from 'dayjs/plugin/timezone';
-try { dayjs.extend(utc); } catch {}
-try { dayjs.extend(tz); } catch {}
+import { DateTime } from "luxon";
 
-export type QueueItem = {
-  id?: string;
-  _id?: string;
-  platform: 'instagram' | 'youtube' | string;
-  status?: 'queued' | 'scheduled' | 'verifying' | 'publishing' | 'posted' | 'failed' | string;
-  scheduledAt?: string; // ISO
-  meta?: {
-    originalScheduledAt?: string; // ISO
-    visualHash?: string;
-    retryAt?: string; // ISO
-    verifyAttempts?: number;
-    pendingLink?: boolean;
-  };
-};
+export const APP_TZ = "America/Chicago";
+export const SLOT_HOURS = [18, 19, 20, 21, 22];
+export const SLOT_MINUTE = 20;
 
-export const displayIso = (q: QueueItem): string | undefined =>
-  (q?.meta && typeof q.meta.originalScheduledAt === 'string' && q.meta.originalScheduledAt)
-    || q?.scheduledAt;
+export function toLocal(dtIso: string) {
+  return DateTime.fromISO(dtIso, { zone: "utc" }).setZone(APP_TZ);
+}
+export function isExactSlot(dtIso: string) {
+  const dt = toLocal(dtIso);
+  return SLOT_HOURS.includes(dt.hour) && dt.minute === SLOT_MINUTE;
+}
+export function fmtLocalLabel(dtIso: string) {
+  return toLocal(dtIso).toFormat("h:mm a");
+}
+export function isFuture(dtIso: string) {
+  const now = DateTime.now().setZone(APP_TZ);
+  return toLocal(dtIso) > now;
+}
 
-export const formatLocal = (iso?: string): string => {
-  if (!iso) return '—';
-  try {
-    return dayjs.tz(iso, dayjs.tz.guess()).format('MMM D, h:mm A z');
-  } catch {
-    return iso;
-  }
-};
-
-
+export type QueueItem = { scheduledAt?: string; meta?: { originalScheduledAt?: string } };
+export const displayIso = (q: QueueItem): string | undefined => (q?.meta?.originalScheduledAt || q?.scheduledAt);
+export const formatLocal = (iso?: string): string => (iso ? toLocal(iso).toFormat('MMM d, h:mm a z') : '—');

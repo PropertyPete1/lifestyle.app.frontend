@@ -76,11 +76,5 @@ export const API_ENDPOINTS = {
   // Heatmap demo endpoints exposed by backend refresh
   heatmapWeekly:      () => withBase('/api/heatmap/weekly'),
   heatmapOptimal:     (platform?: string) => withBase(`/api/heatmap/optimal-times${platform?`?platform=${encodeURIComponent(platform)}`:''}`),
-
-  // Test tools
-  testCleanup:        () => withBase('/api/test/cleanup'),
-  testValidateAPIs:   () => withBase('/api/test/validate-apis'),
-  testMongo:          () => withBase('/api/test/mongodb'),
-  testUpload:         () => withBase('/api/test/upload'),
 };
 

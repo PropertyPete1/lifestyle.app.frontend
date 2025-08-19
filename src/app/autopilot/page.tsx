@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/utils/api';
 import { displayIso, formatLocal, type QueueItem } from '@/lib/time';
 import { useToast } from '@/components/Toast';
+import { autopilotQueueRemoveEndpoint } from '@/utils/api';
 
 type Platform = 'instagram' | 'youtube';
 type QueueItemSummary = {
@@ -63,7 +64,7 @@ function AutopilotPageInner() {
   const loadBurstStatus = async () => {
     try {
       setBurstLoading(true);
-      const res = await fetch(API_ENDPOINTS.burstGet(), { cache: 'no-store' });
+      const res = await fetch(API_ENDPOINTS.autopilotRun(), { cache: 'no-store' });
       const json = await res.json();
       setBurstStatus(json || {});
       if (typeof json?.windowMinutes === 'number') setCfgWindowMinutes(json.windowMinutes);
@@ -78,7 +79,7 @@ function AutopilotPageInner() {
   const setBurst = async (enabled: boolean) => {
     try {
       setBurstLoading(true);
-      await fetch(API_ENDPOINTS.burstPost(), {
+      await fetch(API_ENDPOINTS.autopilotRun(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled, platform }),
@@ -90,7 +91,7 @@ function AutopilotPageInner() {
   const saveBurstConfig = async () => {
     try {
       setSavingConfig(true);
-      await fetch(API_ENDPOINTS.burstConfig(), {
+      await fetch(API_ENDPOINTS.autopilotRun(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ windowMinutes: cfgWindowMinutes, maxPerWindow: cfgMaxPerWindow, platform }),
@@ -102,7 +103,7 @@ function AutopilotPageInner() {
   const runDiagnostics = async () => {
     try {
       setDiagRunning(true);
-      const res = await fetch(API_ENDPOINTS.diagReport(), { cache: 'no-store' });
+      const res = await fetch(API_ENDPOINTS.autopilotRun(), { cache: 'no-store' });
       const json = await res.json();
       setDiagSummary(JSON.stringify(json)?.slice(0, 400));
     } catch { setDiagSummary('Failed to run diagnostics'); }
@@ -351,7 +352,7 @@ function AutopilotPageInner() {
                           // optimistic: remove locally
                           setQueueItems(prev => prev.filter(x => (x._id||x.id||x.videoId) !== id));
                           setSelectedItem(null);
-                          const r = await fetch(API_ENDPOINTS.autopilotQueueRemove(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, itemId:id }) });
+                          const r = await fetch(autopilotQueueRemoveEndpoint(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, itemId:id }) });
                           show(r.ok? 'Removed from queue' : 'Remove failed', r.ok?'success':'error');
                         }}>🗑 Remove</button>
                       </div>
