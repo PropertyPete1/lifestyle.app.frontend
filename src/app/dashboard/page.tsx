@@ -1,6 +1,5 @@
 import UpcomingScheduleClient from "@/components/UpcomingScheduleClient";
-import nextDynamic from "next/dynamic";
-const YTMetricsClient = nextDynamic(() => import("@/components/YTMetricsClient"), { ssr: false });
+import YTMetricsClient from "@/components/YTMetricsClient";
 
 export const dynamic = "force-dynamic";
 
