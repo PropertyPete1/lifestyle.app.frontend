@@ -1,4 +1,4 @@
-// "use client";
+"use client";
 import React from "react";
 
 type Platform = "instagram" | "youtube" | string;

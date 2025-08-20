@@ -1,7 +1,5 @@
-import dyn from "next/dynamic";
 export const dynamic = "force-dynamic";
-
-const SchedulePanel = dyn(() => import("@/components/SchedulePanel"), { ssr: false });
+import SchedulePanel from "@/components/SchedulePanel";
 
 export default function DashboardPage() {
   return (
