@@ -62,14 +62,9 @@ function AutopilotPageInner() {
   };
 
   const loadBurstStatus = async () => {
+    // Deprecated endpoint removed; leave status unknown (null)
+    setBurstLoading(true);
     try {
-      setBurstLoading(true);
-      const res = await fetch(API_ENDPOINTS.autopilotRun(), { cache: 'no-store' });
-      const json = await res.json();
-      setBurstStatus(json || {});
-      if (typeof json?.windowMinutes === 'number') setCfgWindowMinutes(json.windowMinutes);
-      if (typeof json?.maxPerWindow === 'number') setCfgMaxPerWindow(json.maxPerWindow);
-    } catch {
       setBurstStatus(null);
     } finally {
       setBurstLoading(false);
@@ -77,27 +72,17 @@ function AutopilotPageInner() {
   };
 
   const setBurst = async (enabled: boolean) => {
+    // No live endpoint for burst toggle; noop but keep UI responsive
     try {
       setBurstLoading(true);
-      await fetch(API_ENDPOINTS.autopilotRun(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, platform }),
-      });
       await loadBurstStatus();
     } finally { setBurstLoading(false); }
   };
 
   const saveBurstConfig = async () => {
-    try {
-      setSavingConfig(true);
-      await fetch(API_ENDPOINTS.autopilotRun(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ windowMinutes: cfgWindowMinutes, maxPerWindow: cfgMaxPerWindow, platform }),
-      });
-      await loadBurstStatus();
-    } finally { setSavingConfig(false); }
+    // No live endpoint for burst config; noop and return
+    setSavingConfig(true);
+    try { await loadBurstStatus(); } finally { setSavingConfig(false); }
   };
 
   const runDiagnostics = async () => {
@@ -195,7 +180,12 @@ function AutopilotPageInner() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">⚡ Quick Actions</h3>
           <div className="btn-grid">
-            <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotRun(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Scrape started' : 'Scrape failed', r.ok?'success':'error'); }}>🕷️ Scrape</button>
+            <button className="btn" onClick={async()=>{
+              const base = (typeof window !== 'undefined' && (window as unknown as { __API_BASE__?: string }).__API_BASE__) || process.env.NEXT_PUBLIC_API_URL || '';
+              const url = base ? `${base}/api/autopilot/prime-fixed` : '/api/autopilot/prime-fixed';
+              const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store', body: JSON.stringify({ platform }) });
+              show(r.ok? 'Prime started' : 'Prime failed', r.ok?'success':'error');
+            }}>🕷️ Scrape</button>
             <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotRefill(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Refill queued' : 'Refill failed', r.ok?'success':'error'); }}>♻️ Refill</button>
             <button className="btn btn-primary" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform, scope:'all' }) }); show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error'); }}>🚀 Post Now ({platform})</button>
             <button className="btn" onClick={async()=>{ const r= await fetch(API_ENDPOINTS.autopilotManualPost(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform }) }); show(r.ok? 'Manual post queued' : 'Manual post failed', r.ok?'success':'error'); }}>✋ Manual Post</button>
