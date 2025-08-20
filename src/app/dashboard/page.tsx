@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [recentPosts, setRecentPosts] = useState<{ platform?: string; title?: string; ts?: number }[]>([]);
   type ScheduledItem = { _id?: string; id?: string; platform?: string; title?: string; scheduledAt?: string; status?: string };
   const [scheduledNext, setScheduledNext] = useState<ScheduledItem[]>([]);
+  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -159,20 +160,38 @@ export default function DashboardPage() {
                   {String((p as unknown as { status?: string })?.status||'')==='verifying' && (
                     <span className="ml-2 inline-flex items-center rounded border px-1.5 py-0.5 text-xs opacity-80">Verifying…</span>
                   )}
-                  <button className="btn" onClick={async()=>{
+                  <button className="btn" disabled={rowBusyId === (p._id||p.id)} onClick={async()=>{
                     const itemId = p._id || p.id;
                     const pl = (p.platform || '').toLowerCase();
                     if (!itemId || (pl !== 'instagram' && pl !== 'youtube')) return;
-                    const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform: pl, scope:'single', itemId }) });
-                    show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
-                    if (r.ok) await loadDashboardData();
+                    try {
+                      setRowBusyId(itemId);
+                      const base = (typeof window !== 'undefined' && (window as unknown as { __API_BASE__?: string }).__API_BASE__) || process.env.NEXT_PUBLIC_API_URL || '';
+                      const url = base ? `${base}/api/post-now` : API_ENDPOINTS.postNow();
+                      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store', body: JSON.stringify({ platform: pl, scope:'single', itemId }) });
+                      show(r.ok? 'Post Now triggered' : 'Post Now failed', r.ok?'success':'error');
+                      if (r.ok) await loadDashboardData();
+                    } catch {
+                      show('Post Now failed', 'error');
+                    } finally {
+                      setRowBusyId(null);
+                    }
                   }}>🚀</button>
-                  <button className="btn" onClick={async()=>{
+                  <button className="btn" disabled={rowBusyId === (p._id||p.id)} onClick={async()=>{
                     const itemId = p._id || p.id;
                     if (!itemId) return;
-                    const r = await fetch(API_ENDPOINTS.autopilotQueueRemove(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId, platform: p.platform }) });
-                    show(r.ok? 'Removed' : 'Remove failed', r.ok?'success':'error');
-                    if (r.ok) setScheduledNext(prev => prev.filter(x => (x._id||x.id) !== itemId));
+                    try {
+                      setRowBusyId(itemId);
+                      const base = (typeof window !== 'undefined' && (window as unknown as { __API_BASE__?: string }).__API_BASE__) || process.env.NEXT_PUBLIC_API_URL || '';
+                      const url = base ? `${base}/api/autopilot/queue/remove` : API_ENDPOINTS.autopilotQueueRemove();
+                      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store', body: JSON.stringify({ itemId, platform: p.platform }) });
+                      show(r.ok? 'Removed' : 'Remove failed', r.ok?'success':'error');
+                      if (r.ok) await loadDashboardData();
+                    } catch {
+                      show('Remove failed', 'error');
+                    } finally {
+                      setRowBusyId(null);
+                    }
                   }}>🗑</button>
                 </div>
               </div>
@@ -206,7 +225,9 @@ export default function DashboardPage() {
             <button className="btn btn-primary" disabled={posting} onClick={async ()=>{
               try {
                 setPosting(true);
-                const r = await fetch(API_ENDPOINTS.postNow(), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ platform:'both', scope:'next' }) });
+                const base = (typeof window !== 'undefined' && (window as unknown as { __API_BASE__?: string }).__API_BASE__) || process.env.NEXT_PUBLIC_API_URL || '';
+                const url = base ? `${base}/api/post-now` : API_ENDPOINTS.postNow();
+                const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store', body: JSON.stringify({ platform:'both', scope:'next' }) });
                 let summary = 'Done';
                 try { const json = await r.json(); summary = JSON.stringify(json); } catch {}
                 show(r.ok ? `Post Now: ${summary}` : 'Post Now failed', r.ok?'success':'error');

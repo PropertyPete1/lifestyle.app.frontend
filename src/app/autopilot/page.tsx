@@ -103,11 +103,16 @@ function AutopilotPageInner() {
   const runDiagnostics = async () => {
     try {
       setDiagRunning(true);
-      const res = await fetch(API_ENDPOINTS.autopilotRun(), { cache: 'no-store' });
+      const base = (typeof window !== 'undefined' && (window as unknown as { __API_BASE__?: string }).__API_BASE__) || process.env.NEXT_PUBLIC_API_URL || '';
+      const url = base ? `${base}/api/diag/autopilot-report` : '/api/diag/autopilot-report';
+      const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       setDiagSummary(JSON.stringify(json)?.slice(0, 400));
-    } catch { setDiagSummary('Failed to run diagnostics'); }
-    finally { setDiagRunning(false); }
+    } catch {
+      setDiagSummary('Failed to load diagnostics');
+    } finally {
+      setDiagRunning(false);
+    }
   };
 
   const loadQueue = useCallback(async () => {
@@ -230,7 +235,7 @@ function AutopilotPageInner() {
         <div className="dashboard-card vintage-accent">
           <h3 className="card-title">📋 Smart Queue</h3>
           <div className="btn-grid" style={{ marginBottom: '1rem' }}>
-            <button className="btn" disabled={queueLoading} onClick={()=>{ setPage(1); loadQueue(); }}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
+            <button className="btn" disabled={queueLoading} onClick={()=>{ setScheduledFilter('true'); setPage(1); loadQueue(); }}>{queueLoading ? 'Refreshing…' : 'Refresh Queue'}</button>
             <div className="btn">Items: {total}</div>
             <button className="btn btn-primary" onClick={()=>{ setQueueModalOpen(true); setSelectedItem(null); }}>Open Queue</button>
           </div>
