@@ -21,6 +21,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
              </svg>`
           )}
         />
+        {/* Force API base at runtime if env is missing */}
+        <script dangerouslySetInnerHTML={{__html: String.raw`
+          (function(){
+            try {
+              if (!window.__API_BASE__) window.__API_BASE__ = "https://lifestyle-app-backend.onrender.com";
+            } catch(e) {}
+          })();
+        `}} />
       </head>
       <body>
         <div id="particles" className="bg-particles" />

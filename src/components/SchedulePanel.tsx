@@ -33,6 +33,9 @@ function apiBase(): string {
   return STATIC_BASE;
 }
 
+// Debug one-liner: confirm base at runtime
+console.info('API_BASE', apiBase());
+
 async function getJSON<T>(path: string): Promise<T> {
   const base = apiBase();
   const url = base ? `${base}${path}` : path; // if base missing, assume same-origin
